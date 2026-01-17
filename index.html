@@ -307,18 +307,12 @@ require([
 
         popupTemplate: {
           title: "{Name_of_Dam}",
-          content: function(feature) {
-            const attrs = feature.attributes || {};
-            return Object.entries(attrs)
-              .filter(([key]) => key !== "OBJECTID" && key !== "geometry")
-              .map(([key, value]) => 
-                `<div style="margin: 6px 0; line-height: 1.4;">
-                   <strong style="color:#444;">${key.replace(/_/g, " ")}</strong>: 
-                   <span>${value ?? "-"}</span>
-                 </div>`
-              )
-              .join("");
-          }
+          content: [
+            {
+              type: "fields",
+              fieldInfos: []  // Empty array = automatically show ALL fields present in the data
+            }
+          ]
         }
       });
 
@@ -330,7 +324,7 @@ require([
     })
     .catch(err => console.error("Failed to load dams.json", err));
 
-  // ── Search functionality ────────────────────────────
+  // Search functionality
   let currentMatches = [];
   let activeIndex = -1;
 
