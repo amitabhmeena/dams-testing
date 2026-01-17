@@ -182,9 +182,6 @@ require([
     visible: false
   });
 
-  // ──────────────────────────────────────────────────────────────
-  //  FeatureLayer for Dams (points + labels)
-  // ──────────────────────────────────────────────────────────────
   let damFeatureLayer;
 
   const map = new Map({
@@ -231,7 +228,6 @@ require([
     return p ? (+p[0] + p[1]/60 + (p[2]||0)/3600) : null;
   }
 
-  // Load dams → create FeatureLayer once
   fetch("dams.json")
     .then(r => r.json())
     .then(json => {
@@ -253,12 +249,11 @@ require([
           attributes: {
             OBJECTID: index + 1,
             Name_of_Dam: dam.Name_of_Dam || "Unknown",
-            ...dam  // keep all other fields for popup
+            ...dam
           }
         });
       });
 
-      // ── Renderer (simple marker, size based on storage) ───────────────
       const renderer = {
         type: "simple",
         symbol: {
@@ -279,12 +274,11 @@ require([
         }]
       };
 
-      // ── Labeling (robust even without basemap) ────────────────────────
       const labelingInfo = [{
         labelExpressionInfo: { expression: "$feature.Name_of_Dam" },
         symbol: {
           type: "text",
-          color: [255, 165, 0],           // orange
+          color: [255, 165, 0],
           haloColor: [0, 0, 0, 0.8],
           haloSize: "1.2px",
           font: {
@@ -295,7 +289,7 @@ require([
           yoffset: 8
         },
         labelPlacement: "above-center",
-        minScale: 0,    // always visible
+        minScale: 0,
         maxScale: 0
       }];
 
@@ -306,35 +300,38 @@ require([
         spatialReference: { wkid: 4326 },
         fields: [
           { name: "OBJECTID", alias: "ID", type: "oid" },
-          { name: "Name_of_Dam", alias: "Dam Name", type: "string" },
-          // You can add more field definitions if needed
+          { name: "Name_of_Dam", alias: "Dam Name", type: "string" }
         ],
         renderer: renderer,
         labelingInfo: labelingInfo,
         visible: true,
+
         popupTemplate: {
           title: "{Name_of_Dam}",
-          content: [
-            {
-              type: "fields",
-              fieldInfos: Object.keys(features[0]?.attributes || {})
-                .filter(k => k !== "OBJECTID")
-                .map(field => ({ fieldName: field, label: field }))
-            }
-          ]
+          content: function(feature) {
+            const attrs = feature.graphic.attributes;
+            return Object.entries(attrs)
+              .filter(([key]) => key !== "OBJECTID")
+              .map(([key, value]) => 
+                `<div style="margin: 6px 0; line-height: 1.4;">
+                   <strong style="color:#444;">${key.replace(/_/g, " ")}</strong>: 
+                   <span>${value ?? "-"}</span>
+                 </div>`
+              )
+              .join("");
+          }
         }
       });
 
       map.add(damFeatureLayer);
 
-      // Enable/disable with checkbox
       damChk.onchange = () => {
         damFeatureLayer.visible = damChk.checked;
       };
     })
     .catch(err => console.error("Failed to load dams.json", err));
 
-  // ── Search functionality (updated for case-insensitivity and more results) ────────────────────────────
+  // ── Search functionality ────────────────────────────
   let currentMatches = [];
   let activeIndex = -1;
 
@@ -349,13 +346,12 @@ require([
     document.getElementById("clearSearch").style.display = q ? "block" : "none";
     if (!q || !damFeatureLayer) return;
 
-    // Query the FeatureLayer instead of graphics
     damFeatureLayer.queryFeatures({
       where: `LOWER(Name_of_Dam) LIKE '%${q.replace(/'/g, "''")}%'`,
       outFields: ["*"],
       returnGeometry: true,
       orderByFields: ["Name_of_Dam ASC"],
-      num: 100  // Increased limit to ensure more dams are found if matching
+      num: 100
     }).then(response => {
       currentMatches = response.features;
       if (!currentMatches.length) return;
