@@ -1,325 +1,390 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>India Dams Map – Search & Details</title>
+<meta charset="utf-8" />
+<title>India Map – Dams & Boundaries</title>
 
-  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
-  <script src="https://js.arcgis.com/4.29/"></script>
+<link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
+<script src="https://js.arcgis.com/4.29/"></script>
 
-  <style>
-    html, body, #viewDiv {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      width: 100%;
-    }
+<style>
+html, body, #viewDiv {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
 
-    #controls {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      background: white;
-      padding: 14px;
-      z-index: 99;
-      font-family: Arial, sans-serif;
-      font-size: 13px;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-      width: 340px;
-      border-radius: 10px;
-      transition: all 0.3s ease;
-    }
+input[type="text"], select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
 
-    #controls.collapsed #toggle-container {
-      max-height: 0;
-      opacity: 0;
-      overflow: hidden;
-    }
+#controls {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: white;
+  padding: 14px;
+  z-index: 99;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+  width: 340px;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
 
-    .section { font-weight: bold; margin-top: 10px; }
+#controls.collapsed #toggle-container {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
 
-    input[type="text"], select {
-      box-sizing: border-box;
-      width: 100%;
-      padding: 8px;
-      margin-top: 6px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
+.section { font-weight: bold; margin-top: 10px; }
 
-    #results {
-      max-height: 180px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      display: none;
-      margin-top: 8px;
-    }
+#results {
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  display: none;
+}
 
-    .result-item {
-      padding: 6px;
-      cursor: pointer;
-    }
+.result-item {
+  padding: 6px;
+  cursor: pointer;
+}
+.result-item:hover,
+.result-item.active {
+  background: #e6e6e6;
+}
 
-    .result-item:hover,
-    .result-item.active {
-      background: #e6e6e6;
-    }
+.search-wrap {
+  position: relative;
+}
 
-    .search-wrap {
-      position: relative;
-    }
+#clearSearch {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+  display: none;
+}
 
-    #clearSearch {
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      border: none;
-      background: transparent;
-      font-size: 18px;
-      cursor: pointer;
-      display: none;
-    }
+@media (max-width: 768px) {
+  #controls { width: 92%; left: 4%; }
+}
+</style>
+<!-- Google Analytics GA4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-58510VNE1R"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-58510VNE1R', {
+    anonymize_ip: true
+  });
+</script>
 
-    @media (max-width: 768px) {
-      #controls { width: 92%; left: 4%; }
-    }
-  </style>
 </head>
+
 <body>
-  <div id="viewDiv"></div>
 
-  <div id="controls">
+<div id="controls">
+
+  <!-- SEARCH -->
+  <div id="search-container">
+    <div class="section">Search Dam</div>
     <div class="search-wrap">
-      <input type="text" id="damSearch" placeholder="Type dam name..." autocomplete="off" />
-      <button id="clearSearch">×</button>
+      <input type="text" id="damSearch" placeholder="Type dam name…" />
+      <button id="clearSearch" title="Clear">×</button>
     </div>
-
     <div id="results"></div>
+  </div>
+
+  <!-- TOGGLES -->
+  <div id="toggle-container">
 
     <div class="section">Basemap</div>
     <select id="basemapSelect">
-      <option value="satellite">Satellite</option>
+      <option value="satellite" selected>Satellite</option>
+      <option value="streets">Street</option>
       <option value="topo">Topographic</option>
-      <option value="streets">Streets</option>
-      <option value="hybrid">Hybrid</option>
-      <option value="none">No Basemap</option>
+      <option value="none">No basemap</option>
     </select>
 
     <div class="section">Layers</div>
-    <label><input type="checkbox" id="stateBoundaryChk" checked /> State Boundary</label><br>
-    <label><input type="checkbox" id="damChk" checked /> Dams</label><br>
-    <label><input type="checkbox" id="watershedChk" /> Watershed</label>
+    <label><input type="checkbox" id="stateChk" checked> State Boundary</label><br>
+    <label><input type="checkbox" id="districtChk"> District Boundary</label><br>
+    <label><input type="checkbox" id="riverChk"> River</label><br>
+    <label><input type="checkbox" id="watershedChk"> Watershed</label><br>
+    <label><input type="checkbox" id="damChk" checked> Dams</label>
+
   </div>
 
-  <script>
-    require([
-      "esri/Map",
-      "esri/views/MapView",
-      "esri/layers/FeatureLayer",
-      "esri/layers/GraphicsLayer",
-      "esri/layers/support/LabelClass",
-      "esri/widgets/Legend",
-      "esri/Basemap",
-      "esri/layers/WebTileLayer"
-    ], (
-      Map, MapView, FeatureLayer, GraphicsLayer, LabelClass, Legend, Basemap, WebTileLayer
-    ) => {
+</div>
 
-      // =============================================
-      //  POPUP TEMPLATE – NICE FIELD LABELS
-      // =============================================
-      const popupTemplate = {
-        title: "{Name_of_Dam}",
-        content: [
-          {
-            type: "fields",
-            fieldInfos: [
-              { fieldName: "PIC", label: "PIC" },
-              { fieldName: "Name_of_Dam", label: "Name of Dam" },
-              { fieldName: "SDSO", label: "SDSO" },
-              { fieldName: "State", label: "State" },
-              { fieldName: "District", label: "District" },
-              { fieldName: "Basin", label: "Basin" },
-              { fieldName: "Sub_Basin", label: "Sub Basin" },
-              { fieldName: "River", label: "River" },
-              { fieldName: "Dam_Incharge", label: "Dam Incharge" },
-              { fieldName: "Height_above_Lowest_Foundation_Level_m", label: "Height above Lowest Foundation Level (m)" },
-              { fieldName: "Year_of_Completion", label: "Year of Completion" },
-              { fieldName: "Main_Water_Level_m", label: "Main Water Level (m)" },
-              { fieldName: "Full_Reservoir_Level_m", label: "Full Reservoir Level (m)" },
-              { fieldName: "Gross_Storage_Capacity_Mcm", label: "Gross Storage Capacity (Mcm)" },
-              { fieldName: "Live_Storage_Capacity_Mcm", label: "Live Storage Capacity (Mcm)" },
-              { fieldName: "Designed_Spillway_Capacity_cumec", label: "Designed Spillway Capacity (cumec)" },
-              { fieldName: "Dam_Length_m", label: "Dam Length (m)" },
-              { fieldName: "dam_type", label: "Dam Type" },
-              { fieldName: "population_at_risk", label: "Population at Risk" },
-              { fieldName: "Purpose", label: "Purpose" },
-              { fieldName: "Latitude", label: "Latitude" },
-              { fieldName: "Longitude", label: "Longitude" }
-            ]
+<div id="viewDiv"></div>
+
+<script>
+require([
+  "esri/Map",
+  "esri/views/MapView",
+  "esri/layers/MapImageLayer",
+  "esri/layers/GraphicsLayer",
+  "esri/Graphic",
+  "esri/symbols/TextSymbol",
+  "esri/config",
+  "esri/Basemap" // Added for custom no basemap
+], function (
+  Map, MapView,
+  MapImageLayer, GraphicsLayer, Graphic, TextSymbol, esriConfig, Basemap
+) {
+
+  const isMobile = window.matchMedia("(max-width: 768px)").matches;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const controls = document.getElementById("controls");
+
+  function collapse() { if (isMobile || isIOS) controls.classList.add("collapsed"); }
+  function expand() { if (isMobile || isIOS) controls.classList.remove("collapsed"); }
+
+  esriConfig.request.interceptors.push({
+    urls: /mapservice\.gov\.in/,
+    before: p => {
+      p.requestOptions.query = p.requestOptions.query || {};
+      const u = p.url;
+      if (u.includes("State_Boundary"))
+        p.requestOptions.query.token = "B_MvXZQQA3UJQ3rriTr7Qvo4AE-8f2v0JmAgH3h17-3OVcp7agXot9jS8Q7ZPelzaaShzPs5CR7tqOeucn4Oww..";
+      else if (u.includes("District_Boundary"))
+        p.requestOptions.query.token = "KLafX5W7tKxU3qXCTtWzmiub5IsvSYcYf8OYVbFZaO_5Dlji_67_mzrUu6qCgWJ6djeLy_izw-rxbEWms3Ss0g..";
+      else if (u.includes("River"))
+        p.requestOptions.query.token = "aprsZsvhLhQlrHeo2O-9F-PWMUmaTr7awaxuyKOXtWOMMp0VVG70sfDnNltnsh3SLOqcK8zLNCvPqBThYxn5tw..";
+      else if (u.includes("Watershed"))
+        p.requestOptions.query.token = "LYFmEZL-IKy3-iAuFBbGMpNs0rPaWFMD5KuaJUT7I6OFXUWRxnUhDjR3SJfE-ndgh9aAdyua9Cs8b9POB7R51Q..";
+    }
+  });
+
+  const stateLayer = new MapImageLayer({
+    url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/State_Boundary/MapServer",
+    visible: true
+  });
+
+  const districtLayer = new MapImageLayer({
+    url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/District_Boundary/MapServer",
+    visible: false
+  });
+
+  const riverLayer = new MapImageLayer({
+    url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/River/MapServer",
+    visible: false
+  });
+
+  const watershedLayer = new MapImageLayer({
+    url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/Watershed/MapServer",
+    visible: false
+  });
+
+  const damLayer = new GraphicsLayer({ visible: true });
+  const largeLabelLayer = new GraphicsLayer({ visible: false });
+  const smallLabelLayer = new GraphicsLayer({ visible: false });
+
+  const map = new Map({
+    basemap: "satellite",
+    layers: [stateLayer, districtLayer, riverLayer, watershedLayer, damLayer, largeLabelLayer, smallLabelLayer],
+    spatialReference: { wkid: 4326 } // Added to ensure rendering on no basemap
+  });
+
+  const view = new MapView({
+    container: "viewDiv",
+    map,
+    extent: { xmin: 68, ymin: 6, xmax: 97, ymax: 37, spatialReference: { wkid: 4326 } },
+    popup: {
+      dockEnabled: true,
+      dockOptions: { position: "top-right", breakpoint: false }
+    }
+  });
+
+  view.on("drag", collapse);
+  view.on("mouse-wheel", collapse);
+  view.on("click", collapse);
+  view.on("pointer-down", collapse);
+  view.on("touchstart", collapse);
+  damSearch.addEventListener("focus", expand);
+
+  basemapSelect.onchange = () => {
+    if (basemapSelect.value === "none") {
+      map.basemap = new Basemap({}); // Use empty Basemap instead of null for better rendering
+    } else if (basemapSelect.value === "satellite") {
+      map.basemap = "satellite";
+    } else if (basemapSelect.value === "streets") {
+      map.basemap = "streets-vector";
+    } else {
+      map.basemap = "topo-vector";
+    }
+  };
+
+  stateChk.onchange = () => stateLayer.visible = stateChk.checked;
+  districtChk.onchange = () => districtLayer.visible = districtChk.checked;
+  riverChk.onchange = () => riverLayer.visible = riverChk.checked;
+  watershedChk.onchange = () => watershedLayer.visible = watershedChk.checked;
+
+  damChk.onchange = () => {
+    damLayer.visible = damChk.checked;
+    largeLabelLayer.visible = damChk.checked && view.zoom >= 7;
+    smallLabelLayer.visible = damChk.checked && view.zoom >= 10;
+  };
+
+  function dmsToDecimal(dms) {
+    const p = dms?.match(/\d+/g);
+    return p ? (+p[0] + p[1]/60 + (p[2]||0)/3600) : null;
+  }
+
+  function wrapLabel(name) {
+    const parts = name.split(" ");
+    if (parts.length <= 2) return name;
+    const mid = Math.ceil(parts.length / 2);
+    return parts.slice(0, mid).join(" ") + "\n" + parts.slice(mid).join(" ");
+  }
+
+  const damGraphics = [];
+  let currentMatches = [];
+  let activeIndex = -1;
+
+  fetch("dams.json")
+    .then(r => r.json())
+    .then(json => {
+      json.data.forEach(dam => {
+
+        const lat = dmsToDecimal(dam.Latitude);
+        const lon = dmsToDecimal(dam.Longitude);
+        if (!lat || !lon) return;
+
+        const storage = Number(dam["Gross Storage Capacity(mcm)"]);
+        const isLarge = (!isNaN(storage) && storage >= 500);
+        const symbolSize = isLarge ? 5 : 2;
+
+        const g = new Graphic({
+          geometry: { type: "point", latitude: lat, longitude: lon },
+          attributes: dam,
+          symbol: {
+            type: "simple-marker",
+            color: [0,102,204,0.9],
+            size: symbolSize,
+            outline: null
+          },
+          popupTemplate: {
+            title: dam.Name_of_Dam,
+            content: Object.entries(dam)
+              .map(([k,v]) => `<b>${k}:</b> ${v ?? "-"}`)
+              .join("<br>")
           }
-        ]
-      };
-
-      // =============================================
-      //  FEATURE LAYER – MAIN DAMS LAYER
-      // =============================================
-      const damFeatureLayer = new FeatureLayer({
-        url: "https://services.arcgis.com/0L48p6qQ2t1r3X4v/arcgis/rest/services/India_Dams/FeatureServer/0",
-        outFields: ["*"],
-        popupTemplate: popupTemplate,
-        visible: true
-      });
-
-      // Client-side storage for all dams (for fast search)
-      let allDamFeatures = [];
-
-      // Load all dams once when layer is ready
-      damFeatureLayer.when(() => {
-        damFeatureLayer.queryFeatures({
-          where: "1=1",
-          outFields: ["*"],
-          returnGeometry: true
-        }).then(response => {
-          allDamFeatures = response.features;
-          console.log(`Loaded ${allDamFeatures.length} dams for fast search`);
         });
-      });
 
-      // =============================================
-      //  MAP & VIEW SETUP
-      // =============================================
-      const map = new Map({
-        basemap: "satellite",
-        layers: [damFeatureLayer]
-      });
+        damGraphics.push(g);
+        damLayer.add(g);
 
-      const view = new MapView({
-        container: "viewDiv",
-        map: map,
-        center: [78.96, 20.59], // Center of India
-        zoom: 5,
-        popup: {
-          dockEnabled: true,
-          dockOptions: {
-            buttonEnabled: true,
-            breakpoint: false,
-            position: "bottom-right"
-          }
-        }
-      });
-
-      // =============================================
-      //  SEARCH FUNCTIONALITY – CLIENT-SIDE FILTER
-      // =============================================
-      const damSearch = document.getElementById("damSearch");
-      const results = document.getElementById("results");
-      const clearSearch = document.getElementById("clearSearch");
-      let currentMatches = [];
-      let activeIndex = -1;
-
-      damSearch.addEventListener("input", function () {
-        const q = this.value.trim().toLowerCase();
-        results.innerHTML = "";
-        results.style.display = "none";
-        activeIndex = -1;
-        currentMatches = [];
-
-        clearSearch.style.display = q ? "block" : "none";
-        if (!q || !allDamFeatures.length) return;
-
-        currentMatches = allDamFeatures
-          .filter(f => f.attributes.Name_of_Dam?.toLowerCase().includes(q))
-          .slice(0, 50);
-
-        if (!currentMatches.length) return;
-
-        results.style.display = "block";
-
-        currentMatches.forEach((feature, idx) => {
-          const div = document.createElement("div");
-          div.className = "result-item";
-          div.textContent = feature.attributes.Name_of_Dam || "Unnamed Dam";
-          div.onclick = () => selectDam(idx);
-          results.appendChild(div);
+        const labelGraphic = new Graphic({
+          geometry: g.geometry,
+          symbol: new TextSymbol({
+            text: wrapLabel(dam.Name_of_Dam),
+            color: "orange",
+            font: { size: 8, family: "Arial", weight: "bold" },
+            yoffset: 8
+          })
         });
-      });
 
-      // Keyboard navigation
-      damSearch.addEventListener("keydown", function (e) {
-        if (!currentMatches.length) return;
-        const items = results.children;
-
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          activeIndex = (activeIndex + 1) % items.length;
-        } else if (e.key === "ArrowUp") {
-          e.preventDefault();
-          activeIndex = (activeIndex - 1 + items.length) % items.length;
-        } else if (e.key === "Enter") {
-          e.preventDefault();
-          if (activeIndex >= 0) selectDam(activeIndex);
-          return;
-        }
-
-        [...items].forEach((el, i) => {
-          el.classList.toggle("active", i === activeIndex);
-        });
-      });
-
-      function selectDam(index) {
-        const feature = currentMatches[index];
-        if (!feature) return;
-
-        feature.popupTemplate = popupTemplate; // Ensure nice labels
-
-        results.style.display = "none";
-        damSearch.value = feature.attributes.Name_of_Dam || "";
-        clearSearch.style.display = "block";
-        activeIndex = -1;
-
-        view.popup.close();
-        view.goTo({ target: feature.geometry, zoom: 11 }, { duration: 2000 })
-          .then(() => {
-            view.popup.open({
-              features: [feature],
-              location: feature.geometry
-            });
-          });
-      }
-
-      clearSearch.onclick = () => {
-        damSearch.value = "";
-        results.style.display = "none";
-        currentMatches = [];
-        activeIndex = -1;
-        clearSearch.style.display = "none";
-        view.popup.close();
-      };
-
-      // =============================================
-      //  BASEMAP SWITCHER
-      // =============================================
-      const basemapSelect = document.getElementById("basemapSelect");
-      basemapSelect.addEventListener("change", (e) => {
-        const value = e.target.value;
-        if (value === "none") {
-          map.basemap = null;
-        } else {
-          map.basemap = value;
-        }
-      });
-
-      // =============================================
-      //  LAYER TOGGLES (if you want more control)
-      // =============================================
-      document.getElementById("damChk").addEventListener("change", (e) => {
-        damFeatureLayer.visible = e.target.checked;
+        if (isLarge) largeLabelLayer.add(labelGraphic);
+        else smallLabelLayer.add(labelGraphic);
       });
     });
-  </script>
+
+  view.watch("zoom", z => {
+    largeLabelLayer.visible = (z >= 7 && damChk.checked);
+    smallLabelLayer.visible = (z >= 10 && damChk.checked);
+  });
+
+  function selectDam(index) {
+    const g = currentMatches[index];
+    if (!g) return;
+
+    results.style.display = "none";
+    damSearch.value = g.attributes.Name_of_Dam;
+    clearSearch.style.display = "block";
+    activeIndex = -1;
+
+    view.popup.close();
+    view.goTo({ target: g.geometry, zoom: 11 }, { duration: 2000 });
+    view.popup.open({ features: [g], location: g.geometry });
+  }
+
+  damSearch.addEventListener("input", function () {
+    const q = this.value.toLowerCase();
+    results.innerHTML = "";
+    results.style.display = "none";
+    activeIndex = -1;
+    currentMatches = [];
+
+    clearSearch.style.display = q ? "block" : "none";
+    if (!q) return;
+
+    currentMatches = damGraphics
+      .filter(g => g.attributes.Name_of_Dam.toLowerCase().includes(q))
+      .slice(0, 50); // Increased to 50 for more results
+
+    if (!currentMatches.length) return;
+
+    results.style.display = "block";
+
+    currentMatches.forEach((g, idx) => {
+      const div = document.createElement("div");
+      div.className = "result-item";
+      div.textContent = g.attributes.Name_of_Dam;
+      div.onclick = () => selectDam(idx);
+      results.appendChild(div);
+    });
+  });
+
+  damSearch.addEventListener("keydown", function (e) {
+    if (!currentMatches.length) return;
+    const items = results.children;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeIndex = (activeIndex + 1) % items.length;
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeIndex = (activeIndex - 1 + items.length) % items.length;
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeIndex >= 0) selectDam(activeIndex);
+      return;
+    }
+
+    [...items].forEach((el, i) => {
+      el.classList.toggle("active", i === activeIndex);
+    });
+  });
+
+  clearSearch.onclick = () => {
+    damSearch.value = "";
+    results.style.display = "none";
+    currentMatches = [];
+    activeIndex = -1;
+    clearSearch.style.display = "none";
+    view.popup.close();
+  };
+
+});
+</script>
+
 </body>
 </html>
