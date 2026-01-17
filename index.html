@@ -144,10 +144,16 @@ require([
   "esri/Graphic",
   "esri/symbols/TextSymbol",
   "esri/config",
-  "esri/Basemap" // Added for custom no basemap
+  "esri/Basemap",
+  "esri/layers/FeatureLayer",
+  "esri/layers/support/LabelClass",
+  "esri/renderers/ClassBreaksRenderer",
+  "esri/symbols/SimpleMarkerSymbol",
+  "esri/PopupTemplate"
 ], function (
   Map, MapView,
-  MapImageLayer, GraphicsLayer, Graphic, TextSymbol, esriConfig, Basemap
+  MapImageLayer, GraphicsLayer, Graphic, TextSymbol, esriConfig, Basemap,
+  FeatureLayer, LabelClass, ClassBreaksRenderer, SimpleMarkerSymbol, PopupTemplate
 ) {
 
   const isMobile = window.matchMedia("(max-width: 768px)").matches;
@@ -193,14 +199,10 @@ require([
     visible: false
   });
 
-  const damLayer = new GraphicsLayer({ visible: true });
-  const largeLabelLayer = new GraphicsLayer({ visible: false });
-  const smallLabelLayer = new GraphicsLayer({ visible: false });
-
   const map = new Map({
     basemap: "satellite",
-    layers: [stateLayer, districtLayer, riverLayer, watershedLayer, damLayer, largeLabelLayer, smallLabelLayer],
-    spatialReference: { wkid: 4326 } // Added to ensure rendering on no basemap
+    layers: [stateLayer, districtLayer, riverLayer, watershedLayer],
+    spatialReference: { wkid: 4326 }
   });
 
   const view = new MapView({
@@ -221,15 +223,22 @@ require([
   damSearch.addEventListener("focus", expand);
 
   basemapSelect.onchange = () => {
-    if (basemapSelect.value === "none") {
-      map.basemap = new Basemap({}); // Use empty Basemap instead of null for better rendering
-    } else if (basemapSelect.value === "satellite") {
-      map.basemap = "satellite";
-    } else if (basemapSelect.value === "streets") {
-      map.basemap = "streets-vector";
+    const value = basemapSelect.value;
+    
+    if (value === "none") {
+      map.basemap = new Basemap({
+        baseLayers: []
+      });
     } else {
-      map.basemap = "topo-vector";
+      map.basemap = 
+        value === "satellite" ? "satellite" :
+        value === "streets" ? "streets-vector" :
+        "topo-vector";
     }
+
+    setTimeout(() => {
+      view.refresh();
+    }, 300);
   };
 
   stateChk.onchange = () => stateLayer.visible = stateChk.checked;
@@ -237,80 +246,147 @@ require([
   riverChk.onchange = () => riverLayer.visible = riverChk.checked;
   watershedChk.onchange = () => watershedLayer.visible = watershedChk.checked;
 
-  damChk.onchange = () => {
-    damLayer.visible = damChk.checked;
-    largeLabelLayer.visible = damChk.checked && view.zoom >= 7;
-    smallLabelLayer.visible = damChk.checked && view.zoom >= 10;
-  };
-
   function dmsToDecimal(dms) {
     const p = dms?.match(/\d+/g);
     return p ? (+p[0] + p[1]/60 + (p[2]||0)/3600) : null;
-  }
-
-  function wrapLabel(name) {
-    const parts = name.split(" ");
-    if (parts.length <= 2) return name;
-    const mid = Math.ceil(parts.length / 2);
-    return parts.slice(0, mid).join(" ") + "\n" + parts.slice(mid).join(" ");
   }
 
   const damGraphics = [];
   let currentMatches = [];
   let activeIndex = -1;
 
-  fetch("dams.json")
+  fetch("https://raw.githubusercontent.com/amitabhmeena/dams-testing/main/dams.json")
     .then(r => r.json())
     .then(json => {
+      let objectId = 1;
       json.data.forEach(dam => {
 
         const lat = dmsToDecimal(dam.Latitude);
         const lon = dmsToDecimal(dam.Longitude);
         if (!lat || !lon) return;
 
-        const storage = Number(dam["Gross Storage Capacity(mcm)"]);
-        const isLarge = (!isNaN(storage) && storage >= 500);
-        const symbolSize = isLarge ? 5 : 2;
+        dam.ObjectID = objectId++;
+        dam.Gross_Storage_Capacity_mcm = Number(dam["Gross Storage Capacity(mcm)"]);
 
         const g = new Graphic({
           geometry: { type: "point", latitude: lat, longitude: lon },
-          attributes: dam,
-          symbol: {
-            type: "simple-marker",
-            color: [0,102,204,0.9],
-            size: symbolSize,
-            outline: null
-          },
-          popupTemplate: {
-            title: dam.Name_of_Dam,
-            content: Object.entries(dam)
-              .map(([k,v]) => `<b>${k}:</b> ${v ?? "-"}`)
-              .join("<br>")
-          }
+          attributes: dam
         });
 
         damGraphics.push(g);
-        damLayer.add(g);
-
-        const labelGraphic = new Graphic({
-          geometry: g.geometry,
-          symbol: new TextSymbol({
-            text: wrapLabel(dam.Name_of_Dam),
-            color: "orange",
-            font: { size: 8, family: "Arial", weight: "bold" },
-            yoffset: 8
-          })
-        });
-
-        if (isLarge) largeLabelLayer.add(labelGraphic);
-        else smallLabelLayer.add(labelGraphic);
       });
-    });
 
-  view.watch("zoom", z => {
-    largeLabelLayer.visible = (z >= 7 && damChk.checked);
-    smallLabelLayer.visible = (z >= 10 && damChk.checked);
-  });
+      if (damGraphics.length === 0) return;
+
+      // Define fields dynamically
+      const firstDam = json.data[0];
+      const fields = [
+        { name: "ObjectID", type: "oid" }
+      ];
+      Object.keys(firstDam).forEach(key => {
+        fields.push({
+          name: key,
+          type: typeof firstDam[key] === "number" ? "double" : "string"
+        });
+      });
+
+      // Popup template with nice labels
+      const popupTemplate = new PopupTemplate({
+        title: "{Name_of_Dam}",
+        content: [{
+          type: "fields",
+          fieldInfos: fields.slice(1).map(f => ({
+            fieldName: f.name,
+            label: f.name.replace(/_/g, " ").replace(/\(mcm\)/g, "(Mcm)").replace(/\(m\)/g, "(m)")
+          }))
+        }]
+      });
+
+      // Renderer for variable symbol sizes
+      const damRenderer = new ClassBreaksRenderer({
+        field: "Gross_Storage_Capacity_mcm",
+        classBreakInfos: [
+          {
+            minValue: -Infinity,
+            maxValue: 499.999,
+            symbol: new SimpleMarkerSymbol({
+              color: [0, 102, 204, 0.9],
+              size: 2,
+              outline: null
+            })
+          },
+          {
+            minValue: 500,
+            maxValue: Infinity,
+            symbol: new SimpleMarkerSymbol({
+              color: [0, 102, 204, 0.9],
+              size: 5,
+              outline: null
+            })
+          }
+        ]
+      });
+
+      // Label symbol
+      const labelSymbol = {
+        type: "text",
+        color: "orange",
+        font: { size: 8, family: "Arial", weight: "bold" },
+        yoffset: 8,
+        haloColor: "black",
+        haloSize: 1
+      };
+
+      // Label expression for wrapping
+      const labelExpression = `
+        var name = $feature.Name_of_Dam;
+        var parts = Split(name, ' ');
+        if (Count(parts) <= 2) return name;
+        var mid = Ceil(Count(parts) / 2);
+        return Join(parts, ' ', 0, mid) + TextFormatting.NewLine + Join(parts, ' ', mid);
+      `;
+
+      // Label classes
+      const largeLabelClass = new LabelClass({
+        labelExpressionInfo: { expression: labelExpression },
+        symbol: labelSymbol,
+        where: "Gross_Storage_Capacity_mcm >= 500"
+      });
+
+      const smallLabelClass = new LabelClass({
+        labelExpressionInfo: { expression: labelExpression },
+        symbol: labelSymbol,
+        where: "Gross_Storage_Capacity_mcm < 500"
+      });
+
+      // Create FeatureLayer
+      const damFeatureLayer = new FeatureLayer({
+        source: damGraphics,
+        objectIdField: "ObjectID",
+        fields: fields,
+        geometryType: "point",
+        spatialReference: { wkid: 4326 },
+        renderer: damRenderer,
+        popupTemplate: popupTemplate,
+        labelingInfo: [] // Updated dynamically
+      });
+
+      map.add(damFeatureLayer);
+
+      // Toggle visibility
+      document.getElementById("damChk").addEventListener("change", (e) => {
+        damFeatureLayer.visible = e.target.checked;
+      });
+
+      // Update labels based on zoom
+      view.watch("zoom", z => {
+        const labeling = [];
+        if (z >= 7) labeling.push(largeLabelClass);
+        if (z >= 10) labeling.push(smallLabelClass);
+        damFeatureLayer.labelingInfo = labeling;
+      });
+
+    });
 
   function selectDam(index) {
     const g = currentMatches[index];
@@ -338,7 +414,7 @@ require([
 
     currentMatches = damGraphics
       .filter(g => g.attributes.Name_of_Dam.toLowerCase().includes(q))
-      .slice(0, 50); // Increased to 50 for more results
+      .slice(0, 50);
 
     if (!currentMatches.length) return;
 
