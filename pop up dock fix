@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>India Dams Map – Search & Details</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.29/"></script>
+
+  <style>
+    html, body, #viewDiv {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+    }
+
+    #controls {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: white;
+      padding: 14px;
+      z-index: 99;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+      width: 340px;
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+
+    #controls.collapsed #toggle-container {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+    }
+
+    .section { font-weight: bold; margin-top: 10px; }
+
+    input[type="text"], select {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 8px;
+      margin-top: 6px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    #results {
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      display: none;
+      margin-top: 8px;
+    }
+
+    .result-item {
+      padding: 6px;
+      cursor: pointer;
+    }
+
+    .result-item:hover,
+    .result-item.active {
+      background: #e6e6e6;
+    }
+
+    .search-wrap {
+      position: relative;
+    }
+
+    #clearSearch {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: none;
+      background: transparent;
+      font-size: 18px;
+      cursor: pointer;
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      #controls { width: 92%; left: 4%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+
+  <div id="controls">
+    <div class="search-wrap">
+      <input type="text" id="damSearch" placeholder="Type dam name..." autocomplete="off" />
+      <button id="clearSearch">×</button>
+    </div>
+
+    <div id="results"></div>
+
+    <div class="section">Basemap</div>
+    <select id="basemapSelect">
+      <option value="satellite">Satellite</option>
+      <option value="topo">Topographic</option>
+      <option value="streets">Streets</option>
+      <option value="hybrid">Hybrid</option>
+      <option value="none">No Basemap</option>
+    </select>
+
+    <div class="section">Layers</div>
+    <label><input type="checkbox" id="stateBoundaryChk" checked /> State Boundary</label><br>
+    <label><input type="checkbox" id="damChk" checked /> Dams</label><br>
+    <label><input type="checkbox" id="watershedChk" /> Watershed</label>
+  </div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/FeatureLayer",
+      "esri/layers/GraphicsLayer",
+      "esri/layers/support/LabelClass",
+      "esri/widgets/Legend",
+      "esri/Basemap",
+      "esri/layers/WebTileLayer"
+    ], (
+      Map, MapView, FeatureLayer, GraphicsLayer, LabelClass, Legend, Basemap, WebTileLayer
+    ) => {
+
+      // =============================================
+      //  POPUP TEMPLATE – NICE FIELD LABELS
+      // =============================================
+      const popupTemplate = {
+        title: "{Name_of_Dam}",
+        content: [
+          {
+            type: "fields",
+            fieldInfos: [
+              { fieldName: "PIC", label: "PIC" },
+              { fieldName: "Name_of_Dam", label: "Name of Dam" },
+              { fieldName: "SDSO", label: "SDSO" },
+              { fieldName: "State", label: "State" },
+              { fieldName: "District", label: "District" },
+              { fieldName: "Basin", label: "Basin" },
+              { fieldName: "Sub_Basin", label: "Sub Basin" },
+              { fieldName: "River", label: "River" },
+              { fieldName: "Dam_Incharge", label: "Dam Incharge" },
+              { fieldName: "Height_above_Lowest_Foundation_Level_m", label: "Height above Lowest Foundation Level (m)" },
+              { fieldName: "Year_of_Completion", label: "Year of Completion" },
+              { fieldName: "Main_Water_Level_m", label: "Main Water Level (m)" },
+              { fieldName: "Full_Reservoir_Level_m", label: "Full Reservoir Level (m)" },
+              { fieldName: "Gross_Storage_Capacity_Mcm", label: "Gross Storage Capacity (Mcm)" },
+              { fieldName: "Live_Storage_Capacity_Mcm", label: "Live Storage Capacity (Mcm)" },
+              { fieldName: "Designed_Spillway_Capacity_cumec", label: "Designed Spillway Capacity (cumec)" },
+              { fieldName: "Dam_Length_m", label: "Dam Length (m)" },
+              { fieldName: "dam_type", label: "Dam Type" },
+              { fieldName: "population_at_risk", label: "Population at Risk" },
+              { fieldName: "Purpose", label: "Purpose" },
+              { fieldName: "Latitude", label: "Latitude" },
+              { fieldName: "Longitude", label: "Longitude" }
+            ]
+          }
+        ]
+      };
+
+      // =============================================
+      //  FEATURE LAYER – MAIN DAMS LAYER
+      // =============================================
+      const damFeatureLayer = new FeatureLayer({
+        url: "https://services.arcgis.com/0L48p6qQ2t1r3X4v/arcgis/rest/services/India_Dams/FeatureServer/0",
+        outFields: ["*"],
+        popupTemplate: popupTemplate,
+        visible: true
+      });
+
+      // Client-side storage for all dams (for fast search)
+      let allDamFeatures = [];
+
+      // Load all dams once when layer is ready
+      damFeatureLayer.when(() => {
+        damFeatureLayer.queryFeatures({
+          where: "1=1",
+          outFields: ["*"],
+          returnGeometry: true
+        }).then(response => {
+          allDamFeatures = response.features;
+          console.log(`Loaded ${allDamFeatures.length} dams for fast search`);
+        });
+      });
+
+      // =============================================
+      //  MAP & VIEW SETUP
+      // =============================================
+      const map = new Map({
+        basemap: "satellite",
+        layers: [damFeatureLayer]
+      });
+
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [78.96, 20.59], // Center of India
+        zoom: 5,
+        popup: {
+          dockEnabled: true,
+          dockOptions: {
+            buttonEnabled: true,
+            breakpoint: false,
+            position: "bottom-right"
+          }
+        }
+      });
+
+      // =============================================
+      //  SEARCH FUNCTIONALITY – CLIENT-SIDE FILTER
+      // =============================================
+      const damSearch = document.getElementById("damSearch");
+      const results = document.getElementById("results");
+      const clearSearch = document.getElementById("clearSearch");
+      let currentMatches = [];
+      let activeIndex = -1;
+
+      damSearch.addEventListener("input", function () {
+        const q = this.value.trim().toLowerCase();
+        results.innerHTML = "";
+        results.style.display = "none";
+        activeIndex = -1;
+        currentMatches = [];
+
+        clearSearch.style.display = q ? "block" : "none";
+        if (!q || !allDamFeatures.length) return;
+
+        currentMatches = allDamFeatures
+          .filter(f => f.attributes.Name_of_Dam?.toLowerCase().includes(q))
+          .slice(0, 50);
+
+        if (!currentMatches.length) return;
+
+        results.style.display = "block";
+
+        currentMatches.forEach((feature, idx) => {
+          const div = document.createElement("div");
+          div.className = "result-item";
+          div.textContent = feature.attributes.Name_of_Dam || "Unnamed Dam";
+          div.onclick = () => selectDam(idx);
+          results.appendChild(div);
+        });
+      });
+
+      // Keyboard navigation
+      damSearch.addEventListener("keydown", function (e) {
+        if (!currentMatches.length) return;
+        const items = results.children;
+
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          activeIndex = (activeIndex + 1) % items.length;
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          activeIndex = (activeIndex - 1 + items.length) % items.length;
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          if (activeIndex >= 0) selectDam(activeIndex);
+          return;
+        }
+
+        [...items].forEach((el, i) => {
+          el.classList.toggle("active", i === activeIndex);
+        });
+      });
+
+      function selectDam(index) {
+        const feature = currentMatches[index];
+        if (!feature) return;
+
+        feature.popupTemplate = popupTemplate; // Ensure nice labels
+
+        results.style.display = "none";
+        damSearch.value = feature.attributes.Name_of_Dam || "";
+        clearSearch.style.display = "block";
+        activeIndex = -1;
+
+        view.popup.close();
+        view.goTo({ target: feature.geometry, zoom: 11 }, { duration: 2000 })
+          .then(() => {
+            view.popup.open({
+              features: [feature],
+              location: feature.geometry
+            });
+          });
+      }
+
+      clearSearch.onclick = () => {
+        damSearch.value = "";
+        results.style.display = "none";
+        currentMatches = [];
+        activeIndex = -1;
+        clearSearch.style.display = "none";
+        view.popup.close();
+      };
+
+      // =============================================
+      //  BASEMAP SWITCHER
+      // =============================================
+      const basemapSelect = document.getElementById("basemapSelect");
+      basemapSelect.addEventListener("change", (e) => {
+        const value = e.target.value;
+        if (value === "none") {
+          map.basemap = null;
+        } else {
+          map.basemap = value;
+        }
+      });
+
+      // =============================================
+      //  LAYER TOGGLES (if you want more control)
+      // =============================================
+      document.getElementById("damChk").addEventListener("change", (e) => {
+        damFeatureLayer.visible = e.target.checked;
+      });
+    });
+  </script>
+</body>
+</html>
