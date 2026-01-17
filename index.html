@@ -224,13 +224,18 @@ require([
 
   function dmsToDecimal(dms) {
     const p = dms?.match(/\d+/g);
-    return p ? (+p[0] + p[1]/60 + (p[2]||0)/3600) : null;
+    if (!p) return null;
+    let deg = +p[0] || 0;
+    let min = +p[1] || 0;
+    let sec = +p[2] || 0;
+    return deg + min/60 + sec/3600;
   }
 
   fetch("dams.json")
     .then(r => r.json())
     .then(json => {
       const features = [];
+      const allFields = new Set();
 
       json.data.forEach((dam, index) => {
         const lat = dmsToDecimal(dam.Latitude);
@@ -243,14 +248,27 @@ require([
           spatialReference: { wkid: 4326 }
         });
 
+        const attributes = {
+          OBJECTID: index + 1,
+          Name_of_Dam: dam.Name_of_Dam || "Unknown",
+          ...dam
+        };
+
+        Object.keys(attributes).forEach(k => allFields.add(k));
+
         features.push({
           geometry: point,
-          attributes: {
-            OBJECTID: index + 1,
-            Name_of_Dam: dam.Name_of_Dam || "Unknown",
-            ...dam
-          }
+          attributes
         });
+      });
+
+      // Build fields array dynamically from all possible keys
+      const fields = Array.from(allFields).map(name => {
+        const sampleVal = features[0]?.attributes[name];
+        let type = "string";
+        if (typeof sampleVal === "number") type = "double";
+        if (name === "OBJECTID") type = "oid";
+        return { name, alias: name.replace(/_/g, " "), type };
       });
 
       const renderer = {
@@ -280,11 +298,7 @@ require([
           color: [255, 165, 0],
           haloColor: [0, 0, 0, 0.8],
           haloSize: "1.2px",
-          font: {
-            size: 8,
-            family: "Arial",
-            weight: "bold"
-          },
+          font: { size: 8, family: "Arial", weight: "bold" },
           yoffset: 8
         },
         labelPlacement: "above-center",
@@ -297,22 +311,17 @@ require([
         objectIdField: "OBJECTID",
         geometryType: "point",
         spatialReference: { wkid: 4326 },
-        fields: [
-          { name: "OBJECTID", alias: "ID", type: "oid" },
-          { name: "Name_of_Dam", alias: "Dam Name", type: "string" }
-        ],
+        fields: fields,
         renderer: renderer,
         labelingInfo: labelingInfo,
         visible: true,
 
         popupTemplate: {
           title: "{Name_of_Dam}",
-          content: [
-            {
-              type: "fields",
-              fieldInfos: []  // Empty array = automatically show ALL fields present in the data
-            }
-          ]
+          content: [{
+            type: "fields",
+            fieldInfos: []  // ← Empty = automatically show ALL fields!
+          }]
         }
       });
 
@@ -324,7 +333,7 @@ require([
     })
     .catch(err => console.error("Failed to load dams.json", err));
 
-  // Search functionality
+  // ── Search ────────────────────────────
   let currentMatches = [];
   let activeIndex = -1;
 
@@ -358,7 +367,7 @@ require([
         div.onclick = () => selectDam(idx);
         results.appendChild(div);
       });
-    });
+    }).catch(err => console.error("Query error:", err));
   });
 
   damSearch.addEventListener("keydown", function (e) {
@@ -377,9 +386,7 @@ require([
       return;
     }
 
-    [...items].forEach((el, i) => {
-      el.classList.toggle("active", i === activeIndex);
-    });
+    [...items].forEach((el, i) => el.classList.toggle("active", i === activeIndex));
   });
 
   function selectDam(index) {
@@ -387,7 +394,7 @@ require([
     if (!feature) return;
 
     document.getElementById("results").style.display = "none";
-    damSearch.value = feature.attributes.Name_of_Dam;
+    damSearch.value = feature.attributes.Name_of_Dam || "";
     document.getElementById("clearSearch").style.display = "block";
     activeIndex = -1;
 
@@ -398,7 +405,8 @@ require([
           features: [feature],
           location: feature.geometry
         });
-      });
+      })
+      .catch(err => console.error("GoTo / popup error:", err));
   }
 
   document.getElementById("clearSearch").onclick = () => {
