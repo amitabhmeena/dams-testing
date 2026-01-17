@@ -334,7 +334,7 @@ require([
     })
     .catch(err => console.error("Failed to load dams.json", err));
 
-  // ── Search functionality (same as before) ────────────────────────────
+  // ── Search functionality (updated for case-insensitivity and more results) ────────────────────────────
   let currentMatches = [];
   let activeIndex = -1;
 
@@ -351,11 +351,11 @@ require([
 
     // Query the FeatureLayer instead of graphics
     damFeatureLayer.queryFeatures({
-      where: `Name_of_Dam LIKE '%${q.replace(/'/g, "''")}%'`,
+      where: `LOWER(Name_of_Dam) LIKE '%${q.replace(/'/g, "''")}%'`,
       outFields: ["*"],
       returnGeometry: true,
-      maxRecordCountFactor: 1,
-      num: 10
+      orderByFields: ["Name_of_Dam ASC"],
+      num: 100  // Increased limit to ensure more dams are found if matching
     }).then(response => {
       currentMatches = response.features;
       if (!currentMatches.length) return;
