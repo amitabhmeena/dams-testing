@@ -312,30 +312,19 @@ require([
         renderer: renderer,
         labelingInfo: labelingInfo,
         visible: true,
-        
         popupTemplate: {
-  title: "{Name_of_Dam}",
-  content: function (feature) {
-    const attrs = feature.graphic.attributes;
-    let html = "<table style='width:100%; border-collapse:collapse;'>";
+          title: "{Name_of_Dam}",
+          content: [
+            {
+              type: "fields",
+              fieldInfos: Object.keys(features[0]?.attributes || {})
+                .filter(k => k !== "OBJECTID")
+                .map(field => ({ fieldName: field, label: field }))
+            }
+          ]
+        }
+      });
 
-    for (const key in attrs) {
-      if (key === "OBJECTID") continue;
-      html += `
-        <tr>
-          <td style="padding:4px; font-weight:bold; border-bottom:1px solid #ddd;">
-            ${key}
-          </td>
-          <td style="padding:4px; border-bottom:1px solid #ddd;">
-            ${attrs[key] ?? "-"}
-          </td>
-        </tr>`;
-    }
-
-    html += "</table>";
-    return html;
-  }
-}
       map.add(damFeatureLayer);
 
       // Enable/disable with checkbox
