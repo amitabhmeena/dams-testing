@@ -53,7 +53,6 @@
     border: 1px solid #ccc;
     border-radius: 6px;
     display: none;
-    background: white;
   }
 
   .result-item {
@@ -86,24 +85,16 @@
   }
 </style>
 
-<!-- Google Analytics GA4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-58510VNE1R"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-58510VNE1R', { anonymize_ip: true });
-</script>
-
 </head>
 <body>
 
 <div id="controls">
+
   <!-- SEARCH -->
   <div id="search-container">
     <div class="section">Search Dam</div>
     <div class="search-wrap">
-      <input type="text" id="damSearch" placeholder="Type dam name…" autocomplete="off" />
+      <input type="text" id="damSearch" placeholder="Type dam name…" />
       <button id="clearSearch" title="Clear">×</button>
     </div>
     <div id="results"></div>
@@ -111,12 +102,13 @@
 
   <!-- TOGGLES -->
   <div id="toggle-container">
+
     <div class="section">Basemap</div>
     <select id="basemapSelect">
       <option value="satellite" selected>Satellite</option>
-      <option value="streets">Streets</option>
+      <option value="streets">Street</option>
       <option value="topo">Topographic</option>
-      <option value="minimal">Minimal / No basemap</option>
+      <option value="none">No basemap</option>
     </select>
 
     <div class="section">Layers</div>
@@ -125,7 +117,9 @@
     <label><input type="checkbox" id="riverChk"> River</label><br>
     <label><input type="checkbox" id="watershedChk"> Watershed</label><br>
     <label><input type="checkbox" id="damChk" checked> Dams & Labels</label>
+
   </div>
+
 </div>
 
 <div id="viewDiv"></div>
@@ -136,19 +130,13 @@ require([
   "esri/views/MapView",
   "esri/layers/MapImageLayer",
   "esri/layers/FeatureLayer",
-  "esri/layers/support/LabelClass",
-  "esri/renderers/SimpleRenderer",
-  "esri/symbols/SimpleMarkerSymbol",
-  "esri/symbols/TextSymbol",
-  "esri/renderers/visualVariables/SizeVariable",
   "esri/Graphic",
   "esri/geometry/Point",
   "esri/config"
 ], function (
   Map, MapView,
-  MapImageLayer, FeatureLayer, LabelClass,
-  SimpleRenderer, SimpleMarkerSymbol, TextSymbol,
-  SizeVariable, Graphic, Point, esriConfig
+  MapImageLayer, FeatureLayer,
+  Graphic, Point, esriConfig
 ) {
 
   const isMobile = window.matchMedia("(max-width: 768px)").matches;
@@ -158,26 +146,47 @@ require([
   function collapse() { if (isMobile || isIOS) controls.classList.add("collapsed"); }
   function expand() { if (isMobile || isIOS) controls.classList.remove("collapsed"); }
 
-  // ── Token interceptor for gov.in services ──
   esriConfig.request.interceptors.push({
     urls: /mapservice\.gov\.in/,
     before: p => {
       p.requestOptions.query = p.requestOptions.query || {};
       const u = p.url;
-      if (u.includes("State_Boundary"))      p.requestOptions.query.token = "B_MvXZQQA3UJQ3rriTr7Qvo4AE-8f2v0JmAgH3h17-3OVcp7agXot9jS8Q7ZPelzaaShzPs5CR7tqOeucn4Oww..";
-      else if (u.includes("District_Boundary")) p.requestOptions.query.token = "KLafX5W7tKxU3qXCTtWzmiub5IsvSYcYf8OYVbFZaO_5Dlji_67_mzrUu6qCgWJ6djeLy_izw-rxbEWms3Ss0g..";
-      else if (u.includes("River"))          p.requestOptions.query.token = "aprsZsvhLhQlrHeo2O-9F-PWMUmaTr7awaxuyKOXtWOMMp0VVG70sfDnNltnsh3SLOqcK8zLNCvPqBThYxn5tw..";
-      else if (u.includes("Watershed"))      p.requestOptions.query.token = "LYFmEZL-IKy3-iAuFBbGMpNs0rPaWFMD5KuaJUT7I6OFXUWRxnUhDjR3SJfE-ndgh9aAdyua9Cs8b9POB7R51Q..";
+      if (u.includes("State_Boundary"))
+        p.requestOptions.query.token = "B_MvXZQQA3UJQ3rriTr7Qvo4AE-8f2v0JmAgH3h17-3OVcp7agXot9jS8Q7ZPelzaaShzPs5CR7tqOeucn4Oww..";
+      else if (u.includes("District_Boundary"))
+        p.requestOptions.query.token = "KLafX5W7tKxU3qXCTtWzmiub5IsvSYcYf8OYVbFZaO_5Dlji_67_mzrUu6qCgWJ6djeLy_izw-rxbEWms3Ss0g..";
+      else if (u.includes("River"))
+        p.requestOptions.query.token = "aprsZsvhLhQlrHeo2O-9F-PWMUmaTr7awaxuyKOXtWOMMp0VVG70sfDnNltnsh3SLOqcK8zLNCvPqBThYxn5tw..";
+      else if (u.includes("Watershed"))
+        p.requestOptions.query.token = "LYFmEZL-IKy3-iAuFBbGMpNs0rPaWFMD5KuaJUT7I6OFXUWRxnUhDjR3SJfE-ndgh9aAdyua9Cs8b9POB7R51Q..";
     }
   });
 
-  // ── MapImage Layers ──
-  const stateLayer = new MapImageLayer({ url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/State_Boundary/MapServer", visible: true });
-  const districtLayer = new MapImageLayer({ url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/District_Boundary/MapServer", visible: false });
-  const riverLayer = new MapImageLayer({ url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/River/MapServer", visible: false });
-  const watershedLayer = new MapImageLayer({ url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/Watershed/MapServer", visible: false });
+  const stateLayer = new MapImageLayer({
+    url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/State_Boundary/MapServer",
+    visible: true
+  });
 
-  // ── Map ──
+  const districtLayer = new MapImageLayer({
+    url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/District_Boundary/MapServer",
+    visible: false
+  });
+
+  const riverLayer = new MapImageLayer({
+    url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/River/MapServer",
+    visible: false
+  });
+
+  const watershedLayer = new MapImageLayer({
+    url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/Watershed/MapServer",
+    visible: false
+  });
+
+  // ──────────────────────────────────────────────────────────────
+  //  FeatureLayer for Dams (points + labels)
+  // ──────────────────────────────────────────────────────────────
+  let damFeatureLayer;
+
   const map = new Map({
     basemap: "satellite",
     layers: [stateLayer, districtLayer, riverLayer, watershedLayer]
@@ -198,206 +207,222 @@ require([
   view.on("click", collapse);
   view.on("pointer-down", collapse);
   view.on("touchstart", collapse);
-  document.getElementById("damSearch").addEventListener("focus", expand);
+  damSearch.addEventListener("focus", expand);
 
-  // ── Basemap switch (avoid null) ──
-  const basemapSelect = document.getElementById("basemapSelect");
   basemapSelect.onchange = () => {
-    const val = basemapSelect.value;
-    map.basemap = 
-      val === "satellite" ? "satellite" :
-      val === "streets"   ? "streets-vector" :
-      val === "topo"      ? "topo-vector" :
-      "gray-vector";     // ← safe fallback for "minimal/no basemap"
+    map.basemap =
+      basemapSelect.value === "none" ? null :
+      basemapSelect.value === "satellite" ? "satellite" :
+      basemapSelect.value === "streets" ? "streets-vector" :
+      "topo-vector";
   };
 
-  // Layer toggles
-  document.getElementById("stateChk").onchange = (e) => stateLayer.visible = e.target.checked;
-  document.getElementById("districtChk").onchange = (e) => districtLayer.visible = e.target.checked;
-  document.getElementById("riverChk").onchange = (e) => riverLayer.visible = e.target.checked;
-  document.getElementById("watershedChk").onchange = (e) => watershedLayer.visible = e.target.checked;
+  stateChk.onchange = () => stateLayer.visible = stateChk.checked;
+  districtChk.onchange = () => districtLayer.visible = districtChk.checked;
+  riverChk.onchange = () => riverLayer.visible = riverChk.checked;
+  watershedChk.onchange = () => watershedLayer.visible = watershedChk.checked;
 
-  // ── Dams FeatureLayer ──
-  let damsFeatureLayer;
+  damChk.onchange = () => {
+    if (damFeatureLayer) damFeatureLayer.visible = damChk.checked;
+  };
 
   function dmsToDecimal(dms) {
     const p = dms?.match(/\d+/g);
-    return p ? (+p[0] + (+p[1]||0)/60 + (+p[2]||0)/3600) : null;
+    return p ? (+p[0] + p[1]/60 + (p[2]||0)/3600) : null;
   }
 
+  // Load dams → create FeatureLayer once
   fetch("dams.json")
     .then(r => r.json())
     .then(json => {
-      const features = json.data
-        .map((dam, index) => {
-          const lat = dmsToDecimal(dam.Latitude);
-          const lon = dmsToDecimal(dam.Longitude);
-          if (!lat || !lon) return null;
+      const features = [];
 
-          return new Graphic({
-            geometry: new Point({ longitude: lon, latitude: lat }),
-            attributes: {
-              OBJECTID: index + 1,
-              ...dam
-            }
-          });
-        })
-        .filter(Boolean);
+      json.data.forEach((dam, index) => {
+        const lat = dmsToDecimal(dam.Latitude);
+        const lon = dmsToDecimal(dam.Longitude);
+        if (!lat || !lon) return;
 
-      const renderer = new SimpleRenderer({
-        symbol: new SimpleMarkerSymbol({
+        const point = new Point({
+          longitude: lon,
+          latitude: lat,
+          spatialReference: { wkid: 4326 }
+        });
+
+        features.push({
+          geometry: point,
+          attributes: {
+            OBJECTID: index + 1,
+            Name_of_Dam: dam.Name_of_Dam || "Unknown",
+            ...dam  // keep all other fields for popup
+          }
+        });
+      });
+
+      // ── Renderer (simple marker, size based on storage) ───────────────
+      const renderer = {
+        type: "simple",
+        symbol: {
+          type: "simple-marker",
           color: [0, 102, 204, 0.9],
           size: 6,
           outline: null
-        }),
-        visualVariables: [
-          new SizeVariable({
-            type: "size",
-            field: "Gross Storage Capacity(mcm)",
-            valueExpressionTitle: "Storage Capacity",
-            stops: [
-              { value: 0,   size: 4 },
-              { value: 500, size: 10 },
-              { value: 2000,size: 16 }
-            ],
-            legendOptions: { title: "Storage (mcm)" }
-          })
-        ]
-      });
+        },
+        visualVariables: [{
+          type: "size",
+          field: "Gross Storage Capacity(mcm)",
+          valueExpression: "$feature['Gross Storage Capacity(mcm)']",
+          stops: [
+            { value: 0,   size: 4 },
+            { value: 500, size: 12 }
+          ],
+          legendOptions: { title: "Storage (MCM)" }
+        }]
+      };
 
-      const labelClasses = [
-        // Labels for larger dams (earlier visibility)
-        new LabelClass({
-          labelExpressionInfo: { expression: "$feature.Name_of_Dam" },
-          symbol: new TextSymbol({
-            color: [255, 165, 0, 0.95], // orange
-            haloColor: [0,0,0,0.7],
-            haloSize: 1.2,
-            font: { size: 9, family: "Arial", weight: "bold" },
-            yoffset: 12
-          }),
-          labelPlacement: "above-center",
-          maxScale: 0,
-          minScale: 15000000  // ~ zoom 6-7
-        }),
-        // Smaller labels for all dams (high zoom only)
-        new LabelClass({
-          labelExpressionInfo: { expression: "$feature.Name_of_Dam" },
-          symbol: new TextSymbol({
-            color: [255, 165, 0, 0.9],
-            haloColor: [0,0,0,0.6],
-            haloSize: 1,
-            font: { size: 7, family: "Arial" },
-            yoffset: 10
-          }),
-          labelPlacement: "above-center",
-          maxScale: 18000,    // ~ zoom 10+
-          minScale: 0
-        })
-      ];
+      // ── Labeling (robust even without basemap) ────────────────────────
+      const labelingInfo = [{
+        labelExpressionInfo: { expression: "$feature.Name_of_Dam" },
+        symbol: {
+          type: "text",
+          color: [255, 165, 0],           // orange
+          haloColor: [0, 0, 0, 0.8],
+          haloSize: "1.2px",
+          font: {
+            size: 8,
+            family: "Arial",
+            weight: "bold"
+          },
+          yoffset: 8
+        },
+        labelPlacement: "above-center",
+        minScale: 0,    // always visible
+        maxScale: 0
+      }];
 
-      damsFeatureLayer = new FeatureLayer({
+      damFeatureLayer = new FeatureLayer({
         source: features,
         objectIdField: "OBJECTID",
         geometryType: "point",
+        spatialReference: { wkid: 4326 },
         fields: [
           { name: "OBJECTID", alias: "ID", type: "oid" },
           { name: "Name_of_Dam", alias: "Dam Name", type: "string" },
-          { name: "Gross Storage Capacity(mcm)", alias: "Gross Storage (mcm)", type: "double" },
-          // add more fields you need for popup/search
+          // You can add more field definitions if needed
         ],
         renderer: renderer,
-        labelingInfo: labelClasses,
+        labelingInfo: labelingInfo,
         visible: true,
-        title: "Dams",
         popupTemplate: {
           title: "{Name_of_Dam}",
           content: [
             {
               type: "fields",
-              fieldInfos: [
-                { fieldName: "Name_of_Dam",             label: "Name" },
-                { fieldName: "Gross Storage Capacity(mcm)", label: "Gross Storage (mcm)" },
-                // add all other fields you want visible
-              ]
+              fieldInfos: Object.keys(features[0]?.attributes || {})
+                .filter(k => k !== "OBJECTID")
+                .map(field => ({ fieldName: field, label: field }))
             }
           ]
         }
       });
 
-      map.add(damsFeatureLayer);
+      map.add(damFeatureLayer);
 
-      // Dam checkbox now controls the whole FeatureLayer
-      document.getElementById("damChk").onchange = (e) => {
-        damsFeatureLayer.visible = e.target.checked;
+      // Enable/disable with checkbox
+      damChk.onchange = () => {
+        damFeatureLayer.visible = damChk.checked;
       };
     })
     .catch(err => console.error("Failed to load dams.json", err));
 
-  // ── Search (client-side for now - can be improved with layer.query later) ──
-  const damSearch = document.getElementById("damSearch");
-  const results = document.getElementById("results");
-  const clearSearch = document.getElementById("clearSearch");
-
-  let searchGraphics = [];
-
-  // We'll populate this after layer is created
-  view.whenLayerView(damsFeatureLayer).then(() => {
-    // Optional: could query layer instead of keeping array
-  });
+  // ── Search functionality (same as before) ────────────────────────────
+  let currentMatches = [];
+  let activeIndex = -1;
 
   damSearch.addEventListener("input", function () {
-    const q = this.value.trim().toLowerCase();
+    const q = this.value.toLowerCase().trim();
+    const results = document.getElementById("results");
     results.innerHTML = "";
     results.style.display = "none";
-    clearSearch.style.display = q ? "block" : "none";
+    activeIndex = -1;
+    currentMatches = [];
 
-    if (!q || !damsFeatureLayer) return;
+    document.getElementById("clearSearch").style.display = q ? "block" : "none";
+    if (!q || !damFeatureLayer) return;
 
-    // Simple client-side search (can be replaced with layer.queryFeatures)
-    const query = damsFeatureLayer.createQuery();
-    query.where = `UPPER(Name_of_Dam) LIKE '%${q.toUpperCase()}%'`;
-    query.outFields = ["Name_of_Dam"];
-    query.returnGeometry = true;
-    query.maxRecordCountFactor = 3; // small result set
-
-    damsFeatureLayer.queryFeatures(query).then(result => {
-      const features = result.features.slice(0, 10);
-      if (!features.length) return;
+    // Query the FeatureLayer instead of graphics
+    damFeatureLayer.queryFeatures({
+      where: `Name_of_Dam LIKE '%${q.replace(/'/g, "''")}%'`,
+      outFields: ["*"],
+      returnGeometry: true,
+      maxRecordCountFactor: 1,
+      num: 10
+    }).then(response => {
+      currentMatches = response.features;
+      if (!currentMatches.length) return;
 
       results.style.display = "block";
 
-      features.forEach((feature, idx) => {
+      currentMatches.forEach((feature, idx) => {
         const div = document.createElement("div");
         div.className = "result-item";
         div.textContent = feature.attributes.Name_of_Dam;
-        div.onclick = () => {
-          results.style.display = "none";
-          damSearch.value = feature.attributes.Name_of_Dam;
-          clearSearch.style.display = "block";
-
-          view.popup.close();
-          view.goTo({ target: feature.geometry, zoom: 11 }, { duration: 1800 })
-            .then(() => view.popup.open({ features: [feature], location: feature.geometry }));
-        };
+        div.onclick = () => selectDam(idx);
         results.appendChild(div);
       });
     });
   });
 
-  damSearch.addEventListener("keydown", function(e) {
-    if (results.children.length === 0) return;
-    // Arrow navigation can be added here if desired
+  damSearch.addEventListener("keydown", function (e) {
+    if (!currentMatches.length) return;
+    const items = results.children;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeIndex = (activeIndex + 1) % items.length;
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeIndex = (activeIndex - 1 + items.length) % items.length;
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeIndex >= 0) selectDam(activeIndex);
+      return;
+    }
+
+    [...items].forEach((el, i) => {
+      el.classList.toggle("active", i === activeIndex);
+    });
   });
 
-  clearSearch.onclick = () => {
+  function selectDam(index) {
+    const feature = currentMatches[index];
+    if (!feature) return;
+
+    document.getElementById("results").style.display = "none";
+    damSearch.value = feature.attributes.Name_of_Dam;
+    document.getElementById("clearSearch").style.display = "block";
+    activeIndex = -1;
+
+    view.popup.close();
+    view.goTo({ target: feature.geometry, zoom: 11 }, { duration: 2000 })
+      .then(() => {
+        view.popup.open({
+          features: [feature],
+          location: feature.geometry
+        });
+      });
+  }
+
+  document.getElementById("clearSearch").onclick = () => {
     damSearch.value = "";
-    results.style.display = "none";
-    clearSearch.style.display = "none";
+    document.getElementById("results").style.display = "none";
+    currentMatches = [];
+    activeIndex = -1;
+    document.getElementById("clearSearch").style.display = "none";
     view.popup.close();
   };
 
 });
 </script>
+
 </body>
 </html>
