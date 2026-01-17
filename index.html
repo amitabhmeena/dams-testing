@@ -130,13 +130,12 @@ require([
   "esri/views/MapView",
   "esri/layers/MapImageLayer",
   "esri/layers/FeatureLayer",
-  "esri/Graphic",
   "esri/geometry/Point",
   "esri/config"
 ], function (
   Map, MapView,
   MapImageLayer, FeatureLayer,
-  Graphic, Point, esriConfig
+  Point, esriConfig
 ) {
 
   const isMobile = window.matchMedia("(max-width: 768px)").matches;
@@ -309,9 +308,9 @@ require([
         popupTemplate: {
           title: "{Name_of_Dam}",
           content: function(feature) {
-            const attrs = feature.graphic.attributes;
+            const attrs = feature.attributes || {};
             return Object.entries(attrs)
-              .filter(([key]) => key !== "OBJECTID")
+              .filter(([key]) => key !== "OBJECTID" && key !== "geometry")
               .map(([key, value]) => 
                 `<div style="margin: 6px 0; line-height: 1.4;">
                    <strong style="color:#444;">${key.replace(/_/g, " ")}</strong>: 
