@@ -36,13 +36,6 @@
     box-shadow: 0 3px 8px rgba(0,0,0,0.3);
     width: 340px;
     border-radius: 10px;
-    transition: all 0.3s ease;
-  }
-
-  #controls.collapsed #toggle-container {
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
   }
 
   .section { font-weight: bold; margin-top: 10px; }
@@ -59,66 +52,34 @@
     padding: 6px;
     cursor: pointer;
   }
-  .result-item:hover,
-  .result-item.active {
+  .result-item:hover {
     background: #e6e6e6;
   }
-
-  .search-wrap {
-    position: relative;
-  }
-
-  #clearSearch {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    border: none;
-    background: transparent;
-    font-size: 18px;
-    cursor: pointer;
-    display: none;
-  }
-
-  @media (max-width: 768px) {
-    #controls { width: 92%; left: 4%; }
-  }
 </style>
-
 </head>
+
 <body>
 
 <div id="controls">
 
-  <!-- SEARCH -->
-  <div id="search-container">
-    <div class="section">Search Dam</div>
-    <div class="search-wrap">
-      <input type="text" id="damSearch" placeholder="Type dam name…" />
-      <button id="clearSearch" title="Clear">×</button>
-    </div>
-    <div id="results"></div>
-  </div>
+  <div class="section">Search Dam</div>
+  <input type="text" id="damSearch" placeholder="Type dam name…" />
+  <div id="results"></div>
 
-  <!-- TOGGLES -->
-  <div id="toggle-container">
+  <div class="section">Basemap</div>
+  <select id="basemapSelect">
+    <option value="satellite" selected>Satellite</option>
+    <option value="streets">Street</option>
+    <option value="topo">Topographic</option>
+    <option value="none">No basemap</option>
+  </select>
 
-    <div class="section">Basemap</div>
-    <select id="basemapSelect">
-      <option value="satellite" selected>Satellite</option>
-      <option value="streets">Street</option>
-      <option value="topo">Topographic</option>
-      <option value="none">No basemap</option>
-    </select>
-
-    <div class="section">Layers</div>
-    <label><input type="checkbox" id="stateChk" checked> State Boundary</label><br>
-    <label><input type="checkbox" id="districtChk"> District Boundary</label><br>
-    <label><input type="checkbox" id="riverChk"> River</label><br>
-    <label><input type="checkbox" id="watershedChk"> Watershed</label><br>
-    <label><input type="checkbox" id="damChk" checked> Dams & Labels</label>
-
-  </div>
+  <div class="section">Layers</div>
+  <label><input type="checkbox" id="stateChk" checked> State Boundary</label><br>
+  <label><input type="checkbox" id="districtChk"> District Boundary</label><br>
+  <label><input type="checkbox" id="riverChk"> River</label><br>
+  <label><input type="checkbox" id="watershedChk"> Watershed</label><br>
+  <label><input type="checkbox" id="damChk" checked> Dams & Labels</label>
 
 </div>
 
@@ -130,22 +91,15 @@ require([
   "esri/views/MapView",
   "esri/layers/MapImageLayer",
   "esri/layers/FeatureLayer",
-  "esri/Graphic",
   "esri/geometry/Point",
   "esri/config"
 ], function (
   Map, MapView,
   MapImageLayer, FeatureLayer,
-  Graphic, Point, esriConfig
+  Point, esriConfig
 ) {
 
-  const isMobile = window.matchMedia("(max-width: 768px)").matches;
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const controls = document.getElementById("controls");
-
-  function collapse() { if (isMobile || isIOS) controls.classList.add("collapsed"); }
-  function expand() { if (isMobile || isIOS) controls.classList.remove("collapsed"); }
-
+  // ───────────── BharatMap token interceptor ─────────────
   esriConfig.request.interceptors.push({
     urls: /mapservice\.gov\.in/,
     before: p => {
@@ -162,6 +116,7 @@ require([
     }
   });
 
+  // ───────────── Boundary layers ─────────────
   const stateLayer = new MapImageLayer({
     url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/State_Boundary/MapServer",
     visible: true
@@ -182,11 +137,6 @@ require([
     visible: false
   });
 
-  // ──────────────────────────────────────────────────────────────
-  //  FeatureLayer for Dams (points + labels)
-  // ──────────────────────────────────────────────────────────────
-  let damFeatureLayer;
-
   const map = new Map({
     basemap: "satellite",
     layers: [stateLayer, districtLayer, riverLayer, watershedLayer]
@@ -195,26 +145,23 @@ require([
   const view = new MapView({
     container: "viewDiv",
     map,
-    extent: { xmin: 68, ymin: 6, xmax: 97, ymax: 37, spatialReference: { wkid: 4326 } },
+    extent: {
+      xmin: 68, ymin: 6,
+      xmax: 97, ymax: 37,
+      spatialReference: { wkid: 4326 }
+    },
     popup: {
       dockEnabled: true,
       dockOptions: { position: "top-right", breakpoint: false }
     }
   });
 
-  view.on("drag", collapse);
-  view.on("mouse-wheel", collapse);
-  view.on("click", collapse);
-  view.on("pointer-down", collapse);
-  view.on("touchstart", collapse);
-  damSearch.addEventListener("focus", expand);
-
   basemapSelect.onchange = () => {
     map.basemap =
       basemapSelect.value === "none" ? null :
-      basemapSelect.value === "satellite" ? "satellite" :
       basemapSelect.value === "streets" ? "streets-vector" :
-      "topo-vector";
+      basemapSelect.value === "topo" ? "topo-vector" :
+      "satellite";
   };
 
   stateChk.onchange = () => stateLayer.visible = stateChk.checked;
@@ -222,216 +169,129 @@ require([
   riverChk.onchange = () => riverLayer.visible = riverChk.checked;
   watershedChk.onchange = () => watershedLayer.visible = watershedChk.checked;
 
-  damChk.onchange = () => {
-    if (damFeatureLayer) damFeatureLayer.visible = damChk.checked;
-  };
-
   function dmsToDecimal(dms) {
     const p = dms?.match(/\d+/g);
     return p ? (+p[0] + p[1]/60 + (p[2]||0)/3600) : null;
   }
 
-  // Load dams → create FeatureLayer once
   fetch("dams.json")
     .then(r => r.json())
     .then(json => {
+
       const features = [];
 
-      json.data.forEach((dam, index) => {
+      json.data.forEach((dam, i) => {
         const lat = dmsToDecimal(dam.Latitude);
         const lon = dmsToDecimal(dam.Longitude);
         if (!lat || !lon) return;
 
-        const point = new Point({
-          longitude: lon,
-          latitude: lat,
-          spatialReference: { wkid: 4326 }
-        });
-
         features.push({
-          geometry: point,
+          geometry: new Point({ latitude: lat, longitude: lon }),
           attributes: {
-            OBJECTID: index + 1,
+            OBJECTID: i + 1,
             Name_of_Dam: dam.Name_of_Dam || "Unknown",
-            ...dam  // keep all other fields for popup
+            ...dam
           }
         });
       });
 
-      // ── Renderer (simple marker, size based on storage) ───────────────
-      const renderer = {
-        type: "simple",
-        symbol: {
-          type: "simple-marker",
-          color: [0, 102, 204, 0.9],
-          size: 6,
-          outline: null
-        },
-        visualVariables: [{
-          type: "size",
-          field: "Gross Storage Capacity(mcm)",
-          valueExpression: "$feature['Gross Storage Capacity(mcm)']",
-          stops: [
-            { value: 0,   size: 4 },
-            { value: 500, size: 12 }
-          ],
-          legendOptions: { title: "Storage (MCM)" }
-        }]
-      };
-
-      // ── Labeling (robust even without basemap) ────────────────────────
-      const labelingInfo = [{
-        labelExpressionInfo: { expression: "$feature.Name_of_Dam" },
-        symbol: {
-          type: "text",
-          color: [255, 165, 0],           // orange
-          haloColor: [0, 0, 0, 0.8],
-          haloSize: "1.2px",
-          font: {
-            size: 8,
-            family: "Arial",
-            weight: "bold"
-          },
-          yoffset: 8
-        },
-        labelPlacement: "above-center",
-        minScale: 0,    // always visible
-        maxScale: 0
-      }];
-
-      damFeatureLayer = new FeatureLayer({
+      const damLayer = new FeatureLayer({
         source: features,
         objectIdField: "OBJECTID",
         geometryType: "point",
         spatialReference: { wkid: 4326 },
-        fields: [
-          { name: "OBJECTID", alias: "ID", type: "oid" },
-          { name: "Name_of_Dam", alias: "Dam Name", type: "string" },
-          // You can add more field definitions if needed
+
+        renderer: {
+          type: "simple",
+          symbol: {
+            type: "simple-marker",
+            size: 6,
+            color: [0,102,204,0.9],
+            outline: null
+          }
+        },
+
+        // ───────── SCALE-DEPENDENT LABELING (ONLY CHANGE) ─────────
+        labelingInfo: [
+
+          {
+            where: `"Gross Storage Capacity(mcm)" >= 500`,
+            labelExpressionInfo: { expression: "$feature.Name_of_Dam" },
+            symbol: {
+              type: "text",
+              color: [255,165,0],
+              haloColor: [0,0,0,0.8],
+              haloSize: "1.2px",
+              font: { size: 9, weight: "bold" }
+            },
+            labelPlacement: "above-center",
+            minScale: 0,
+            maxScale: 0
+          },
+
+          {
+            where: `"Gross Storage Capacity(mcm)" < 500`,
+            labelExpressionInfo: { expression: "$feature.Name_of_Dam" },
+            symbol: {
+              type: "text",
+              color: [255,215,0],
+              haloColor: [0,0,0,0.7],
+              haloSize: "1px",
+              font: { size: 8 }
+            },
+            labelPlacement: "above-center",
+            maxScale: 1000000
+          }
         ],
-        renderer: renderer,
-        labelingInfo: labelingInfo,
-        visible: true,
+
         popupTemplate: {
-  title: "{Name_of_Dam}",
-  content: function (feature) {
-    const attrs = feature.graphic.attributes;
-    let html = "<table style='width:100%; border-collapse:collapse;'>";
-
-    for (const key in attrs) {
-      if (key === "OBJECTID") continue;
-      html += `
-        <tr>
-          <td style="padding:4px; font-weight:bold; border-bottom:1px solid #ddd;">
-            ${key}
-          </td>
-          <td style="padding:4px; border-bottom:1px solid #ddd;">
-            ${attrs[key] ?? "-"}
-          </td>
-        </tr>`;
-    }
-
-    html += "</table>";
-    return html;
-  }
-}
-
-      map.add(damFeatureLayer);
-
-      // Enable/disable with checkbox
-      damChk.onchange = () => {
-        damFeatureLayer.visible = damChk.checked;
-      };
-    })
-    .catch(err => console.error("Failed to load dams.json", err));
-
-  // ── Search functionality (updated for case-insensitivity and more results) ────────────────────────────
-  let currentMatches = [];
-  let activeIndex = -1;
-
-  damSearch.addEventListener("input", function () {
-    const q = this.value.toLowerCase().trim();
-    const results = document.getElementById("results");
-    results.innerHTML = "";
-    results.style.display = "none";
-    activeIndex = -1;
-    currentMatches = [];
-
-    document.getElementById("clearSearch").style.display = q ? "block" : "none";
-    if (!q || !damFeatureLayer) return;
-
-    // Query the FeatureLayer instead of graphics
-    damFeatureLayer.queryFeatures({
-      where: `LOWER(Name_of_Dam) LIKE '%${q.replace(/'/g, "''")}%'`,
-      outFields: ["*"],
-      returnGeometry: true,
-      orderByFields: ["Name_of_Dam ASC"],
-      num: 100  // Increased limit to ensure more dams are found if matching
-    }).then(response => {
-      currentMatches = response.features;
-      if (!currentMatches.length) return;
-
-      results.style.display = "block";
-
-      currentMatches.forEach((feature, idx) => {
-        const div = document.createElement("div");
-        div.className = "result-item";
-        div.textContent = feature.attributes.Name_of_Dam;
-        div.onclick = () => selectDam(idx);
-        results.appendChild(div);
+          title: "{Name_of_Dam}",
+          content: function (feature) {
+            const a = feature.graphic.attributes;
+            let html = "<table style='width:100%'>";
+            for (const k in a) {
+              if (k === "OBJECTID") continue;
+              html += `<tr>
+                <td style="font-weight:bold;padding:4px">${k}</td>
+                <td style="padding:4px">${a[k] ?? "-"}</td>
+              </tr>`;
+            }
+            return html + "</table>";
+          }
+        }
       });
-    });
-  });
 
-  damSearch.addEventListener("keydown", function (e) {
-    if (!currentMatches.length) return;
-    const items = results.children;
+      map.add(damLayer);
+      damChk.onchange = () => damLayer.visible = damChk.checked;
 
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      activeIndex = (activeIndex + 1) % items.length;
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      activeIndex = (activeIndex - 1 + items.length) % items.length;
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      if (activeIndex >= 0) selectDam(activeIndex);
-      return;
-    }
+      damSearch.oninput = function () {
+        const q = this.value.toLowerCase();
+        results.innerHTML = "";
+        results.style.display = "none";
+        if (!q) return;
 
-    [...items].forEach((el, i) => {
-      el.classList.toggle("active", i === activeIndex);
-    });
-  });
-
-  function selectDam(index) {
-    const feature = currentMatches[index];
-    if (!feature) return;
-
-    document.getElementById("results").style.display = "none";
-    damSearch.value = feature.attributes.Name_of_Dam;
-    document.getElementById("clearSearch").style.display = "block";
-    activeIndex = -1;
-
-    view.popup.close();
-    view.goTo({ target: feature.geometry, zoom: 11 }, { duration: 2000 })
-      .then(() => {
-        view.popup.open({
-          features: [feature],
-          location: feature.geometry
+        damLayer.queryFeatures({
+          where: `LOWER(Name_of_Dam) LIKE '%${q.replace(/'/g,"''")}%'`,
+          returnGeometry: true,
+          outFields: ["*"],
+          num: 50
+        }).then(r => {
+          if (!r.features.length) return;
+          results.style.display = "block";
+          r.features.forEach(f => {
+            const div = document.createElement("div");
+            div.className = "result-item";
+            div.textContent = f.attributes.Name_of_Dam;
+            div.onclick = () => {
+              results.style.display = "none";
+              view.goTo({ target: f.geometry, zoom: 11 })
+                .then(() => view.popup.open({ features: [f] }));
+            };
+            results.appendChild(div);
+          });
         });
-      });
-  }
-
-  document.getElementById("clearSearch").onclick = () => {
-    damSearch.value = "";
-    document.getElementById("results").style.display = "none";
-    currentMatches = [];
-    activeIndex = -1;
-    document.getElementById("clearSearch").style.display = "none";
-    view.popup.close();
-  };
-
+      };
+    });
 });
 </script>
 
