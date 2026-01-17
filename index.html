@@ -262,7 +262,7 @@ require([
         });
       });
 
-      // Build fields array dynamically from all possible keys
+      // Build fields array
       const fields = Array.from(allFields).map(name => {
         const sampleVal = features[0]?.attributes[name];
         let type = "string";
@@ -270,6 +270,14 @@ require([
         if (name === "OBJECTID") type = "oid";
         return { name, alias: name.replace(/_/g, " "), type };
       });
+
+      // Build fieldInfos for popup (this is key!)
+      const fieldInfos = fields
+        .filter(f => f.name !== "OBJECTID" && f.name !== "geometry")
+        .map(f => ({
+          fieldName: f.name,
+          label: f.alias
+        }));
 
       const renderer = {
         type: "simple",
@@ -320,7 +328,7 @@ require([
           title: "{Name_of_Dam}",
           content: [{
             type: "fields",
-            fieldInfos: []  // ← Empty = automatically show ALL fields!
+            fieldInfos: fieldInfos  // Now populated with all fields!
           }]
         }
       });
@@ -333,7 +341,7 @@ require([
     })
     .catch(err => console.error("Failed to load dams.json", err));
 
-  // ── Search ────────────────────────────
+  // Search functionality
   let currentMatches = [];
   let activeIndex = -1;
 
@@ -367,7 +375,7 @@ require([
         div.onclick = () => selectDam(idx);
         results.appendChild(div);
       });
-    }).catch(err => console.error("Query error:", err));
+    });
   });
 
   damSearch.addEventListener("keydown", function (e) {
@@ -386,7 +394,9 @@ require([
       return;
     }
 
-    [...items].forEach((el, i) => el.classList.toggle("active", i === activeIndex));
+    [...items].forEach((el, i) => {
+      el.classList.toggle("active", i === activeIndex);
+    });
   });
 
   function selectDam(index) {
@@ -394,7 +404,7 @@ require([
     if (!feature) return;
 
     document.getElementById("results").style.display = "none";
-    damSearch.value = feature.attributes.Name_of_Dam || "";
+    damSearch.value = feature.attributes.Name_of_Dam;
     document.getElementById("clearSearch").style.display = "block";
     activeIndex = -1;
 
@@ -405,8 +415,7 @@ require([
           features: [feature],
           location: feature.geometry
         });
-      })
-      .catch(err => console.error("GoTo / popup error:", err));
+      });
   }
 
   document.getElementById("clearSearch").onclick = () => {
