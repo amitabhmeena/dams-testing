@@ -312,6 +312,7 @@ require([
         renderer: renderer,
         labelingInfo: labelingInfo,
         visible: true,
+        
         popupTemplate: {
   title: "{Name_of_Dam}",
   content: function (feature) {
@@ -335,8 +336,6 @@ require([
     return html;
   }
 }
-
-
       map.add(damFeatureLayer);
 
       // Enable/disable with checkbox
