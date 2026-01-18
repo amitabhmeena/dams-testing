@@ -117,7 +117,7 @@
     <label><input type="checkbox" id="riverChk"> River</label><br>
     <label><input type="checkbox" id="watershedChk"> Watershed</label><br>
     <label><input type="checkbox" id="damChk" checked> Dams & Labels</label>
-    <label><input type="checkbox" id="hoChk" checked> HO Sites</label>
+    <label><input type="checkbox" id="hoChk"> HO Sites</label>
 
 
   </div>
@@ -272,7 +272,7 @@ fetch("ho-sites.geojson")
           }
         ]
       },
-      visible: true
+      visible: false
     });
 
     map.add(hoFeatureLayer);
