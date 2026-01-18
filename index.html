@@ -443,25 +443,70 @@ if (oidField) oidField.type = "oid";
   });
 
   damSearch.addEventListener("keydown", function (e) {
-    if (!currentMatches.length) return;
-    const items = results.children;
 
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      activeIndex = (activeIndex + 1) % items.length;
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      activeIndex = (activeIndex - 1 + items.length) % items.length;
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      if (activeIndex >= 0) selectDam(activeIndex);
+  const items = results.children;
+
+  // Arrow navigation (unchanged behavior)
+  if (e.key === "ArrowDown" && items.length) {
+    e.preventDefault();
+    activeIndex = (activeIndex + 1) % items.length;
+  }
+  else if (e.key === "ArrowUp" && items.length) {
+    e.preventDefault();
+    activeIndex = (activeIndex - 1 + items.length) % items.length;
+  }
+
+  // ENTER key logic (HYBRID)
+  else if (e.key === "Enter") {
+    e.preventDefault();
+
+    // Case 1: Dam selected from dropdown
+    if (activeIndex >= 0 && currentMatches.length) {
+      selectDam(activeIndex);
       return;
     }
 
-    [...items].forEach((el, i) => {
-      el.classList.toggle("active", i === activeIndex);
+    // Case 2: No dam selected → geocode
+    const query = damSearch.value.trim();
+    if (!query) return;
+
+    locator.addressToLocations(worldLocator, {
+      address: { SingleLine: query },
+      maxLocations: 1,
+      countryCode: "IND"
+    }).then(results => {
+
+      if (!results.length) {
+        alert("Location not found");
+        return;
+      }
+
+      const loc = results[0];
+
+      view.popup.close();
+
+      view.goTo({
+        target: loc.location,
+        zoom: 10
+      }, { duration: 2000 }).then(() => {
+        view.popup.open({
+          title: loc.address,
+          location: loc.location,
+          content: "Location searched using ArcGIS Geocoding"
+        });
+      });
+
+    }).catch(err => {
+      console.error("Geocoding error", err);
     });
+  }
+
+  // Highlight dropdown item
+  [...items].forEach((el, i) => {
+    el.classList.toggle("active", i === activeIndex);
   });
+
+});
 
   function selectDam(index) {
     const feature = currentMatches[index];
