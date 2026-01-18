@@ -280,24 +280,12 @@ require([
       };
 
       // ── Labeling (robust even without basemap) ────────────────────────
+      
       const labelingInfo = [{
-  labelPlacement: "above-center",
-
   labelExpressionInfo: {
-    expression: `
-      var z = $view.zoom;
-      var s = Number($feature["Gross Storage Capacity(mcm)"]);
-
-      // Zoomed out → only large dams
-      if (z < 10) {
-        return s >= 500 ? $feature.Name_of_Dam : null;
-      }
-
-      // Zoomed in → all dams
-      return $feature.Name_of_Dam;
-    `
+    expression: "$feature.Name_of_Dam"
   },
-
+  labelPlacement: "above-center",
   symbol: {
     type: "text",
     color: [255, 165, 0],
@@ -311,7 +299,6 @@ require([
     yoffset: 8
   }
 }];
-
 
       // ── AUTO-GENERATE FIELDS FROM JSON ATTRIBUTES ─────────────
 const sampleAttrs = features[0].attributes;
@@ -350,6 +337,26 @@ if (oidField) oidField.type = "oid";
       });
 
       map.add(damFeatureLayer);
+
+      function updateDamFilterByZoom(zoom) {
+  if (!damFeatureLayer) return;
+
+  if (zoom < 10) {
+    // Only large dams
+    damFeatureLayer.definitionExpression =
+      "\"Gross Storage Capacity(mcm)\" >= 500";
+  } else {
+    // All dams
+    damFeatureLayer.definitionExpression = "1=1";
+  }
+}
+
+// Apply initially
+updateDamFilterByZoom(view.zoom);
+
+// Watch zoom changes
+view.watch("zoom", updateDamFilterByZoom);
+
 
       // Enable/disable with checkbox
       damChk.onchange = () => {
