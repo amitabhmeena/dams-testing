@@ -329,7 +329,7 @@ if (oidField) oidField.type = "oid";
               type: "fields",
               fieldInfos: Object.keys(features[0]?.attributes || {})
                 .filter(k => k !== "OBJECTID")
-                .map(field => ({ fieldName: field, label: field }))
+                .map(field => ({ fieldName: field, label: field.replace(/_/g, " ") }))
             }
           ]
         }
