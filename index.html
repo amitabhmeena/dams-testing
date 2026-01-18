@@ -299,28 +299,39 @@ require([
         maxScale: 0
       }];
 
+      // ── AUTO-GENERATE FIELDS FROM JSON ATTRIBUTES ─────────────
+const sampleAttrs = features[0].attributes;
+
+const fields = Object.keys(sampleAttrs).map(key => ({
+  name: key,
+  alias: key.replace(/_/g, " "),
+  type: typeof sampleAttrs[key] === "number" ? "double" : "string"
+}));
+
+// Ensure OBJECTID is correct
+const oidField = fields.find(f => f.name === "OBJECTID");
+if (oidField) oidField.type = "oid";
+
+
       damFeatureLayer = new FeatureLayer({
         source: features,
         objectIdField: "OBJECTID",
         geometryType: "point",
         spatialReference: { wkid: 4326 },
-        fields: [
-          { name: "OBJECTID", alias: "ID", type: "oid" },
-          { name: "Name_of_Dam", alias: "Dam Name", type: "string" },
-          // Additional fields can be defined here if needed, but not required for dynamic popup
-        ],
+        fields: fields,
         renderer: renderer,
         labelingInfo: labelingInfo,
         visible: true,
         popupTemplate: {
           title: "{Name_of_Dam}",
-          content: function (feature) {
-            const attrs = feature.graphic.attributes;
-            return Object.entries(attrs)
-              .filter(([key]) => key !== "OBJECTID" && key !== "Name_of_Dam") // Exclude ID and name (already in title)
-              .map(([key, value]) => `<b>${key}:</b> ${value ?? "-"}`)
-              .join("<br>");
-          }
+          content: [
+            {
+              type: "fields",
+              fieldInfos: Object.keys(features[0]?.attributes || {})
+                .filter(k => k !== "OBJECTID")
+                .map(field => ({ fieldName: field, label: field }))
+            }
+          ]
         }
       });
 
