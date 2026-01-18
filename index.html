@@ -280,25 +280,34 @@ require([
       };
 
       // ── Labeling (robust even without basemap) ────────────────────────
-      
-      const labelingInfo = [{
-  labelExpressionInfo: {
-    expression: "$feature.Name_of_Dam"
-  },
-  labelPlacement: "above-center",
-  symbol: {
-    type: "text",
-    color: [255, 165, 0],
-    haloColor: [0, 0, 0, 0.9],
-    haloSize: "1.2px",
-    font: {
-      size: 8,
-      family: "Arial",
-      weight: "bold"
+      const labelingInfo = [
+  {
+    // Only label dams with Gross Storage >= 500 MCM
+    where: "\"Gross Storage Capacity(mcm)\" >= 500",
+    
+    // Show labels when zoomed out farther than ~1:3 million 
+    // (roughly state/region view), hide when you zoom in closer
+    minScale: 3000000,     // ← most zoomed-out scale where label still shows
+    maxScale: 500000,      // ← stop showing labels when zoomed in closer than ~1:500k (district/close level)
+    
+    labelExpressionInfo: {
+      expression: "$feature.Name_of_Dam"
     },
-    yoffset: 8
+    labelPlacement: "above-center",
+    symbol: {
+      type: "text",
+      color: [255, 180, 0],           // bright orange
+      haloColor: [0, 0, 0, 0.9],
+      haloSize: "1.4px",
+      font: {
+        size: 10,
+        family: "Arial",
+        weight: "bold"
+      },
+      yoffset: 10
+    }
   }
-}];
+];
 
       // ── AUTO-GENERATE FIELDS FROM JSON ATTRIBUTES ─────────────
 const sampleAttrs = features[0].attributes;
@@ -337,26 +346,6 @@ if (oidField) oidField.type = "oid";
       });
 
       map.add(damFeatureLayer);
-
-      function updateDamFilterByZoom(zoom) {
-  if (!damFeatureLayer) return;
-
-  if (zoom < 10) {
-    // Only large dams
-    damFeatureLayer.definitionExpression =
-      "\"Gross Storage Capacity(mcm)\" >= 500";
-  } else {
-    // All dams
-    damFeatureLayer.definitionExpression = "1=1";
-  }
-}
-
-// Apply initially
-updateDamFilterByZoom(view.zoom);
-
-// Watch zoom changes
-view.watch("zoom", updateDamFilterByZoom);
-
 
       // Enable/disable with checkbox
       damChk.onchange = () => {
