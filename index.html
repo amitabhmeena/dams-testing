@@ -300,7 +300,7 @@ view.ui.add(scaleBar, {
   {
     labelExpressionInfo: {
       expression: `
-        $feature.Name_of_Dam
+        Proper($feature.Name_of_Dam)
       `
     },
     minScale: 500000,
@@ -329,7 +329,7 @@ view.ui.add(scaleBar, {
       expression: `
         IIf(
           Number($feature["Gross Storage Capacity(mcm)"]) >= 500,
-          $feature.Name_of_Dam,
+          Proper($feature.Name_of_Dam),
           ""
         )
       `
