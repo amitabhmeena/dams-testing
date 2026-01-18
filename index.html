@@ -132,7 +132,7 @@ require([
   "esri/layers/FeatureLayer",
   "esri/Graphic",
   "esri/geometry/Point",
-  "esri/config",
+  "esri/config"
   "esri/widgets/ScaleBar"
 ], function (
   Map, MapView,
@@ -291,15 +291,16 @@ view.ui.add(scaleBar, {
       };
 
       // ── Labeling (robust even without basemap) ────────────────────────
+      
       const labelingInfo = [
 
   // ─────────────────────────────────────────────
-  // 1️⃣ Medium zoom → ONLY large dams (>= 500 MCM)
+  // Zoom < 10  → ONLY large dams (>= 500 mcm)
   // ─────────────────────────────────────────────
   {
     where: "\"Gross Storage Capacity(mcm)\" >= 500",
-    minScale: 5000000,   // slightly zoomed India
-    maxScale: 1500000,
+    minScale: 560000,    // zoom < 10
+    maxScale: 0,         // applies up to world view
 
     labelExpressionInfo: {
       expression: "$feature.Name_of_Dam"
@@ -320,11 +321,11 @@ view.ui.add(scaleBar, {
   },
 
   // ─────────────────────────────────────────────
-  // 2️⃣ High zoom → ALL dams
+  // Zoom ≥ 10 → ALL dams
   // ─────────────────────────────────────────────
   {
-    minScale: 1500000,   // much higher zoom
-    maxScale: 0,
+    minScale: 0,         // zoom ≥ 10
+    maxScale: 560000,
 
     labelExpressionInfo: {
       expression: "$feature.Name_of_Dam"
@@ -344,7 +345,6 @@ view.ui.add(scaleBar, {
     }
   }
 ];
-
 
       // ── AUTO-GENERATE FIELDS FROM JSON ATTRIBUTES ─────────────
 const sampleAttrs = features[0].attributes;
