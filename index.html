@@ -307,35 +307,21 @@ require([
         fields: [
           { name: "OBJECTID", alias: "ID", type: "oid" },
           { name: "Name_of_Dam", alias: "Dam Name", type: "string" },
-          // You can add more field definitions if needed
+          // Additional fields can be defined here if needed, but not required for dynamic popup
         ],
         renderer: renderer,
         labelingInfo: labelingInfo,
         visible: true,
         popupTemplate: {
-  title: "{Name_of_Dam}",
-  content: function (feature) {
-    const attrs = feature.graphic.attributes;
-    let html = "<table style='width:100%; border-collapse:collapse;'>";
-
-    for (const key in attrs) {
-      if (key === "OBJECTID") continue;
-      html += `
-        <tr>
-          <td style="padding:4px; font-weight:bold; border-bottom:1px solid #ddd;">
-            ${key}
-          </td>
-          <td style="padding:4px; border-bottom:1px solid #ddd;">
-            ${attrs[key] ?? "-"}
-          </td>
-        </tr>`;
-    }
-
-    html += "</table>";
-    return html;
-  }
-}
-
+          title: "{Name_of_Dam}",
+          content: function (feature) {
+            const attrs = feature.graphic.attributes;
+            return Object.entries(attrs)
+              .filter(([key]) => key !== "OBJECTID" && key !== "Name_of_Dam") // Exclude ID and name (already in title)
+              .map(([key, value]) => `<b>${key}:</b> ${value ?? "-"}`)
+              .join("<br>");
+          }
+        }
       });
 
       map.add(damFeatureLayer);
