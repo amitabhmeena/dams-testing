@@ -4,126 +4,93 @@
 <meta charset="utf-8" />
 <title>India Map – Dams & Boundaries</title>
 
-<!-- ============================================================
-     ArcGIS JavaScript API (v4.29)
-     ============================================================ -->
 <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
 <script src="https://js.arcgis.com/4.29/"></script>
 
 <style>
-/* ============================================================
-   BASIC PAGE + MAP CONTAINER
-   ============================================================ */
-html, body, #viewDiv {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100%;
-}
-
-/* ============================================================
-   FORM ELEMENTS
-   ============================================================ */
-input[type="text"], select {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 8px;
-  margin-top: 6px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-}
-
-/* ============================================================
-   FLOATING CONTROL PANEL
-   ============================================================ */
-#controls {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  background: white;
-  padding: 14px;
-  z-index: 99;
-  font-family: Arial, sans-serif;
-  font-size: 13px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-  width: 340px;
-  border-radius: 10px;
-  transition: all 0.3s ease;
-}
-
-/* Collapsed state (mobile / iOS) */
-#controls.collapsed #toggle-container {
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-}
-
-/* Section headings */
-.section {
-  font-weight: bold;
-  margin-top: 10px;
-}
-
-/* ============================================================
-   SEARCH RESULTS LIST
-   ============================================================ */
-#results {
-  max-height: 160px;
-  overflow-y: auto;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  display: none;
-}
-
-.result-item {
-  padding: 6px;
-  cursor: pointer;
-}
-
-.result-item:hover,
-.result-item.active {
-  background: #e6e6e6;
-}
-
-/* ============================================================
-   SEARCH INPUT + CLEAR BUTTON
-   ============================================================ */
-.search-wrap {
-  position: relative;
-}
-
-#clearSearch {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  border: none;
-  background: transparent;
-  font-size: 18px;
-  cursor: pointer;
-  display: none;
-}
-
-/* ============================================================
-   RESPONSIVE ADJUSTMENT
-   ============================================================ */
-@media (max-width: 768px) {
-  #controls {
-    width: 92%;
-    left: 4%;
+  html, body, #viewDiv {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
   }
-}
-</style>
-</head>
 
+  input[type="text"], select {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 8px;
+    margin-top: 6px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+  }
+
+  #controls {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: white;
+    padding: 14px;
+    z-index: 99;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    width: 340px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+  }
+
+  #controls.collapsed #toggle-container {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+  }
+
+  .section { font-weight: bold; margin-top: 10px; }
+
+  #results {
+    max-height: 160px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    display: none;
+  }
+
+  .result-item {
+    padding: 6px;
+    cursor: pointer;
+  }
+  .result-item:hover,
+  .result-item.active {
+    background: #e6e6e6;
+  }
+
+  .search-wrap {
+    position: relative;
+  }
+
+  #clearSearch {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    cursor: pointer;
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    #controls { width: 92%; left: 4%; }
+  }
+</style>
+
+</head>
 <body>
 
-<!-- ============================================================
-     CONTROL PANEL (SEARCH + TOGGLES)
-     ============================================================ -->
 <div id="controls">
 
-  <!-- ================= SEARCH ================= -->
+  <!-- SEARCH -->
   <div id="search-container">
     <div class="section">Search Dam</div>
     <div class="search-wrap">
@@ -133,7 +100,7 @@ input[type="text"], select {
     <div id="results"></div>
   </div>
 
-  <!-- ================= TOGGLES ================= -->
+  <!-- TOGGLES -->
   <div id="toggle-container">
 
     <div class="section">Basemap</div>
@@ -152,11 +119,9 @@ input[type="text"], select {
     <label><input type="checkbox" id="damChk" checked> Dams & Labels</label>
 
   </div>
+
 </div>
 
-<!-- ============================================================
-     MAP VIEW CONTAINER
-     ============================================================ -->
 <div id="viewDiv"></div>
 
 <script>
@@ -174,51 +139,29 @@ require([
   Graphic, Point, esriConfig
 ) {
 
-  /* ============================================================
-     DEVICE DETECTION (FOR AUTO-COLLAPSE)
-     ============================================================ */
   const isMobile = window.matchMedia("(max-width: 768px)").matches;
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const controls = document.getElementById("controls");
 
-  function collapse() {
-    if (isMobile || isIOS) controls.classList.add("collapsed");
-  }
-  function expand() {
-    if (isMobile || isIOS) controls.classList.remove("collapsed");
-  }
+  function collapse() { if (isMobile || isIOS) controls.classList.add("collapsed"); }
+  function expand() { if (isMobile || isIOS) controls.classList.remove("collapsed"); }
 
-  /* ============================================================
-     TOKEN INJECTION FOR MAPSERVICE.GOV.IN
-     (CRITICAL FOR AUTHENTICATION)
-     ============================================================ */
   esriConfig.request.interceptors.push({
     urls: /mapservice\.gov\.in/,
     before: p => {
       p.requestOptions.query = p.requestOptions.query || {};
       const u = p.url;
-
       if (u.includes("State_Boundary"))
-        p.requestOptions.query.token =
-          "B_MvXZQQA3UJQ3rriTr7Qvo4AE-8f2v0JmAgH3h17-3OVcp7agXot9jS8Q7ZPelzaaShzPs5CR7tqOeucn4Oww..";
-
+        p.requestOptions.query.token = "B_MvXZQQA3UJQ3rriTr7Qvo4AE-8f2v0JmAgH3h17-3OVcp7agXot9jS8Q7ZPelzaaShzPs5CR7tqOeucn4Oww..";
       else if (u.includes("District_Boundary"))
-        p.requestOptions.query.token =
-          "KLafX5W7tKxU3qXCTtWzmiub5IsvSYcYf8OYVbFZaO_5Dlji_67_mzrUu6qCgWJ6djeLy_izw-rxbEWms3Ss0g..";
-
+        p.requestOptions.query.token = "KLafX5W7tKxU3qXCTtWzmiub5IsvSYcYf8OYVbFZaO_5Dlji_67_mzrUu6qCgWJ6djeLy_izw-rxbEWms3Ss0g..";
       else if (u.includes("River"))
-        p.requestOptions.query.token =
-          "aprsZsvhLhQlrHeo2O-9F-PWMUmaTr7awaxuyKOXtWOMMp0VVG70sfDnNltnsh3SLOqcK8zLNCvPqBThYxn5tw..";
-
+        p.requestOptions.query.token = "aprsZsvhLhQlrHeo2O-9F-PWMUmaTr7awaxuyKOXtWOMMp0VVG70sfDnNltnsh3SLOqcK8zLNCvPqBThYxn5tw..";
       else if (u.includes("Watershed"))
-        p.requestOptions.query.token =
-          "LYFmEZL-IKy3-iAuFBbGMpNs0rPaWFMD5KuaJUT7I6OFXUWRxnUhDjR3SJfE-ndgh9aAdyua9Cs8b9POB7R51Q..";
+        p.requestOptions.query.token = "LYFmEZL-IKy3-iAuFBbGMpNs0rPaWFMD5KuaJUT7I6OFXUWRxnUhDjR3SJfE-ndgh9aAdyua9Cs8b9POB7R51Q..";
     }
   });
 
-  /* ============================================================
-     BOUNDARY LAYERS (MAP IMAGE SERVICES)
-     ============================================================ */
   const stateLayer = new MapImageLayer({
     url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/State_Boundary/MapServer",
     visible: true
@@ -239,9 +182,11 @@ require([
     visible: false
   });
 
-  /* ============================================================
-     MAP + VIEW INITIALIZATION
-     ============================================================ */
+  // ──────────────────────────────────────────────────────────────
+  //  FeatureLayer for Dams (points + labels)
+  // ──────────────────────────────────────────────────────────────
+  let damFeatureLayer;
+
   const map = new Map({
     basemap: "satellite",
     layers: [stateLayer, districtLayer, riverLayer, watershedLayer]
@@ -250,23 +195,13 @@ require([
   const view = new MapView({
     container: "viewDiv",
     map,
-    extent: {
-      xmin: 68,
-      ymin: 6,
-      xmax: 97,
-      ymax: 37,
-      spatialReference: { wkid: 4326 }
-    },
+    extent: { xmin: 68, ymin: 6, xmax: 97, ymax: 37, spatialReference: { wkid: 4326 } },
     popup: {
       dockEnabled: true,
-      dockOptions: {
-        position: "top-right",
-        breakpoint: false
-      }
+      dockOptions: { position: "top-right", breakpoint: false }
     }
   });
 
-  /* Auto-collapse controls when map is used */
   view.on("drag", collapse);
   view.on("mouse-wheel", collapse);
   view.on("click", collapse);
@@ -274,9 +209,6 @@ require([
   view.on("touchstart", collapse);
   damSearch.addEventListener("focus", expand);
 
-  /* ============================================================
-     BASEMAP SWITCHING (INCLUDING NO BASEMAP)
-     ============================================================ */
   basemapSelect.onchange = () => {
     map.basemap =
       basemapSelect.value === "none" ? null :
@@ -285,31 +217,24 @@ require([
       "topo-vector";
   };
 
-  /* ============================================================
-     LAYER VISIBILITY TOGGLES
-     ============================================================ */
   stateChk.onchange = () => stateLayer.visible = stateChk.checked;
   districtChk.onchange = () => districtLayer.visible = districtChk.checked;
   riverChk.onchange = () => riverLayer.visible = riverChk.checked;
   watershedChk.onchange = () => watershedLayer.visible = watershedChk.checked;
 
-  /* ============================================================
-     HELPER: DMS → DECIMAL DEGREES
-     ============================================================ */
+  damChk.onchange = () => {
+    if (damFeatureLayer) damFeatureLayer.visible = damChk.checked;
+  };
+
   function dmsToDecimal(dms) {
     const p = dms?.match(/\d+/g);
-    return p ? (+p[0] + p[1] / 60 + (p[2] || 0) / 3600) : null;
+    return p ? (+p[0] + p[1]/60 + (p[2]||0)/3600) : null;
   }
 
-  /* ============================================================
-     LOAD DAMS.JSON → CREATE FEATURELAYER
-     ============================================================ */
-  let damFeatureLayer;
-
+  // Load dams → create FeatureLayer once
   fetch("dams.json")
     .then(r => r.json())
     .then(json => {
-
       const features = [];
 
       json.data.forEach((dam, index) => {
@@ -317,21 +242,23 @@ require([
         const lon = dmsToDecimal(dam.Longitude);
         if (!lat || !lon) return;
 
+        const point = new Point({
+          longitude: lon,
+          latitude: lat,
+          spatialReference: { wkid: 4326 }
+        });
+
         features.push({
-          geometry: new Point({
-            latitude: lat,
-            longitude: lon,
-            spatialReference: { wkid: 4326 }
-          }),
+          geometry: point,
           attributes: {
             OBJECTID: index + 1,
             Name_of_Dam: dam.Name_of_Dam || "Unknown",
-            ...dam
+            ...dam  // keep all other fields for popup
           }
         });
       });
 
-      /* ================= RENDERER ================= */
+      // ── Renderer (simple marker, size based on storage) ───────────────
       const renderer = {
         type: "simple",
         symbol: {
@@ -343,19 +270,21 @@ require([
         visualVariables: [{
           type: "size",
           field: "Gross Storage Capacity(mcm)",
+          valueExpression: "$feature['Gross Storage Capacity(mcm)']",
           stops: [
-            { value: 0, size: 4 },
+            { value: 0,   size: 4 },
             { value: 500, size: 12 }
-          ]
+          ],
+          legendOptions: { title: "Storage (MCM)" }
         }]
       };
 
-      /* ================= LABELING ================= */
+      // ── Labeling (robust even without basemap) ────────────────────────
       const labelingInfo = [{
         labelExpressionInfo: { expression: "$feature.Name_of_Dam" },
         symbol: {
           type: "text",
-          color: [255, 165, 0],
+          color: [255, 165, 0],           // orange
           haloColor: [0, 0, 0, 0.8],
           haloSize: "1.2px",
           font: {
@@ -366,53 +295,134 @@ require([
           yoffset: 8
         },
         labelPlacement: "above-center",
-        minScale: 0,
+        minScale: 0,    // always visible
         maxScale: 0
       }];
 
-      /* ================= FEATURELAYER ================= */
       damFeatureLayer = new FeatureLayer({
         source: features,
         objectIdField: "OBJECTID",
         geometryType: "point",
         spatialReference: { wkid: 4326 },
         fields: [
-          { name: "OBJECTID", type: "oid" },
-          { name: "Name_of_Dam", type: "string" }
+          { name: "OBJECTID", alias: "ID", type: "oid" },
+          { name: "Name_of_Dam", alias: "Dam Name", type: "string" },
+          // You can add more field definitions if needed
         ],
-        renderer,
-        labelingInfo,
+        renderer: renderer,
+        labelingInfo: labelingInfo,
+        visible: true,
         popupTemplate: {
-  title: "{Name_of_Dam}",
-  content: function (feature) {
-    const attrs = feature.graphic.attributes;
-    let html = "<table style='width:100%; border-collapse:collapse;'>";
-
-    for (const key in attrs) {
-      if (key === "OBJECTID") continue;
-      html += `
-        <tr>
-          <td style="padding:4px; font-weight:bold; border-bottom:1px solid #ddd;">
-            ${key}
-          </td>
-          <td style="padding:4px; border-bottom:1px solid #ddd;">
-            ${attrs[key] ?? "-"}
-          </td>
-        </tr>`;
-    }
-
-    html += "</table>";
-    return html;
-  }
-}
-
+          title: "{Name_of_Dam}",
+          content: [
+            {
+              type: "fields",
+              fieldInfos: Object.keys(features[0]?.attributes || {})
+                .filter(k => k !== "OBJECTID")
+                .map(field => ({ fieldName: field, label: field }))
+            }
+          ]
+        }
       });
 
       map.add(damFeatureLayer);
-      damChk.onchange = () => damFeatureLayer.visible = damChk.checked;
+
+      // Enable/disable with checkbox
+      damChk.onchange = () => {
+        damFeatureLayer.visible = damChk.checked;
+      };
+    })
+    .catch(err => console.error("Failed to load dams.json", err));
+
+  // ── Search functionality (updated for case-insensitivity and more results) ────────────────────────────
+  let currentMatches = [];
+  let activeIndex = -1;
+
+  damSearch.addEventListener("input", function () {
+    const q = this.value.toLowerCase().trim();
+    const results = document.getElementById("results");
+    results.innerHTML = "";
+    results.style.display = "none";
+    activeIndex = -1;
+    currentMatches = [];
+
+    document.getElementById("clearSearch").style.display = q ? "block" : "none";
+    if (!q || !damFeatureLayer) return;
+
+    // Query the FeatureLayer instead of graphics
+    damFeatureLayer.queryFeatures({
+      where: `LOWER(Name_of_Dam) LIKE '%${q.replace(/'/g, "''")}%'`,
+      outFields: ["*"],
+      returnGeometry: true,
+      orderByFields: ["Name_of_Dam ASC"],
+      num: 100  // Increased limit to ensure more dams are found if matching
+    }).then(response => {
+      currentMatches = response.features;
+      if (!currentMatches.length) return;
+
+      results.style.display = "block";
+
+      currentMatches.forEach((feature, idx) => {
+        const div = document.createElement("div");
+        div.className = "result-item";
+        div.textContent = feature.attributes.Name_of_Dam;
+        div.onclick = () => selectDam(idx);
+        results.appendChild(div);
+      });
     });
+  });
+
+  damSearch.addEventListener("keydown", function (e) {
+    if (!currentMatches.length) return;
+    const items = results.children;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeIndex = (activeIndex + 1) % items.length;
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeIndex = (activeIndex - 1 + items.length) % items.length;
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeIndex >= 0) selectDam(activeIndex);
+      return;
+    }
+
+    [...items].forEach((el, i) => {
+      el.classList.toggle("active", i === activeIndex);
+    });
+  });
+
+  function selectDam(index) {
+    const feature = currentMatches[index];
+    if (!feature) return;
+
+    document.getElementById("results").style.display = "none";
+    damSearch.value = feature.attributes.Name_of_Dam;
+    document.getElementById("clearSearch").style.display = "block";
+    activeIndex = -1;
+
+    view.popup.close();
+    view.goTo({ target: feature.geometry, zoom: 11 }, { duration: 2000 })
+      .then(() => {
+        view.popup.open({
+          features: [feature],
+          location: feature.geometry
+        });
+      });
+  }
+
+  document.getElementById("clearSearch").onclick = () => {
+    damSearch.value = "";
+    document.getElementById("results").style.display = "none";
+    currentMatches = [];
+    activeIndex = -1;
+    document.getElementById("clearSearch").style.display = "none";
+    view.popup.close();
+  };
 
 });
 </script>
+
 </body>
 </html>
