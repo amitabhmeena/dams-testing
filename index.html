@@ -295,13 +295,13 @@ view.ui.add(scaleBar, {
       const labelingInfo = [
 
   // ─────────────────────────────────────────────
-  // Zoom < 10  (scale > 560,000)
-  // ONLY large dams (>= 500 mcm)
+  // ZOOMED OUT (scale > 560,000)
+  // ONLY dams >= 500 mcm
   // ─────────────────────────────────────────────
   {
     where: "\"Gross Storage Capacity(mcm)\" >= 500",
-    minScale: 0,           // world view
-    maxScale: 560000,      // just before zoom 10
+    minScale: 0,            // no zoom-in limit
+    maxScale: 560000,       // hide when zoomed in beyond this
 
     labelExpressionInfo: {
       expression: "$feature.Name_of_Dam"
@@ -322,12 +322,12 @@ view.ui.add(scaleBar, {
   },
 
   // ─────────────────────────────────────────────
-  // Zoom ≥ 10  (scale ≤ 560,000)
+  // ZOOMED IN (scale <= 560,000)
   // ALL dams
   // ─────────────────────────────────────────────
   {
-    minScale: 560000,
-    maxScale: 0,
+    minScale: 560000,       // start showing at zoom-in
+    maxScale: 0,            // no zoom-out limit
 
     labelExpressionInfo: {
       expression: "$feature.Name_of_Dam"
