@@ -280,28 +280,68 @@ require([
       };
 
       // ── Labeling (robust even without basemap) ────────────────────────
-      const labelingInfo = [{
-  labelExpressionInfo: {
-    expression: `
-      IIf(
-        Number($feature["Gross Storage Capacity(mcm)"]) >= 500,
-        $feature.Name_of_Dam,
-        ""
-      )
-    `
+      const labelingInfo = [
+
+  /* ==============================
+     RULE 1: ALL DAMS (large zoom)
+     Scale: 0 to 1:500,000
+  ============================== */
+  {
+    labelExpressionInfo: {
+      expression: `
+        $feature.Name_of_Dam
+      `
+    },
+    minScale: 500000,
+    maxScale: 0,
+    labelPlacement: "above-center",
+    symbol: {
+      type: "text",
+      color: [255, 180, 0],
+      haloColor: [0, 0, 0, 0.9],
+      haloSize: "1.5px",
+      font: {
+        size: 10,
+        family: "Arial",
+        weight: "bold"
+      },
+      yoffset: 10
+    }
   },
-  minScale: 5000000,
-  maxScale: 0,
-  labelPlacement: "above-center",
-  symbol: {
-    type: "text",
-    color: [255, 180, 0],
-    haloColor: [0,0,0,0.9],
-    haloSize: "1.5px",
-    font: { size: 10, family: "Arial", weight: "bold" },
-    yoffset: 10
+
+  /* =========================================
+     RULE 2: ONLY DAMS >= 500 MCM (mid zoom)
+     Scale: 1:500,000 to 1:5,000,000
+  ========================================= */
+  {
+    labelExpressionInfo: {
+      expression: `
+        IIf(
+          Number($feature["Gross Storage Capacity(mcm)"]) >= 500,
+          $feature.Name_of_Dam,
+          ""
+        )
+      `
+    },
+    minScale: 5000000,
+    maxScale: 500000,
+    labelPlacement: "above-center",
+    symbol: {
+      type: "text",
+      color: [255, 180, 0],
+      haloColor: [0, 0, 0, 0.9],
+      haloSize: "1.5px",
+      font: {
+        size: 10,
+        family: "Arial",
+        weight: "bold"
+      },
+      yoffset: 10
+    }
   }
-}];
+
+];
+
       // ── AUTO-GENERATE FIELDS FROM JSON ATTRIBUTES ─────────────
 const sampleAttrs = features[0].attributes;
 
