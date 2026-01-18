@@ -280,24 +280,60 @@ require([
       };
 
       // ── Labeling (robust even without basemap) ────────────────────────
-      const labelingInfo = [{
-        labelExpressionInfo: { expression: "$feature.Name_of_Dam" },
-        symbol: {
-          type: "text",
-          color: [255, 165, 0],           // orange
-          haloColor: [0, 0, 0, 0.8],
-          haloSize: "1.2px",
-          font: {
-            size: 8,
-            family: "Arial",
-            weight: "bold"
-          },
-          yoffset: 8
-        },
-        labelPlacement: "above-center",
-        minScale: 0,    // always visible
-        maxScale: 0
-      }];
+      const labelingInfo = [
+
+  // ─────────────────────────────────────────────
+  // 1️⃣ Medium zoom → ONLY large dams (>= 500 MCM)
+  // ─────────────────────────────────────────────
+  {
+    where: "Gross Storage Capacity(mcm) >= 500",
+    minScale: 5000000,   // slightly zoomed India
+    maxScale: 1500000,
+
+    labelExpressionInfo: {
+      expression: "$feature.Name_of_Dam"
+    },
+    labelPlacement: "above-center",
+    symbol: {
+      type: "text",
+      color: [255, 165, 0],
+      haloColor: [0, 0, 0, 0.9],
+      haloSize: "1.2px",
+      font: {
+        size: 9,
+        family: "Arial",
+        weight: "bold"
+      },
+      yoffset: 8
+    }
+  },
+
+  // ─────────────────────────────────────────────
+  // 2️⃣ High zoom → ALL dams
+  // ─────────────────────────────────────────────
+  {
+    minScale: 1500000,   // much higher zoom
+    maxScale: 0,
+
+    labelExpressionInfo: {
+      expression: "$feature.Name_of_Dam"
+    },
+    labelPlacement: "above-center",
+    symbol: {
+      type: "text",
+      color: [255, 165, 0],
+      haloColor: [0, 0, 0, 0.9],
+      haloSize: "1.2px",
+      font: {
+        size: 8,
+        family: "Arial",
+        weight: "normal"
+      },
+      yoffset: 8
+    }
+  }
+];
+
 
       // ── AUTO-GENERATE FIELDS FROM JSON ATTRIBUTES ─────────────
 const sampleAttrs = features[0].attributes;
