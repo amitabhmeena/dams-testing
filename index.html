@@ -132,12 +132,11 @@ require([
   "esri/layers/FeatureLayer",
   "esri/Graphic",
   "esri/geometry/Point",
-  "esri/config",
-  "esri/widgets/ScaleBar"
+  "esri/config"
 ], function (
   Map, MapView,
   MapImageLayer, FeatureLayer,
-  Graphic, Point, esriConfig, ScaleBar
+  Graphic, Point, esriConfig
 ) {
 
   const isMobile = window.matchMedia("(max-width: 768px)").matches;
@@ -202,16 +201,6 @@ require([
       dockOptions: { position: "top-right", breakpoint: false }
     }
   });
-
-  const scaleBar = new ScaleBar({
-  view: view,
-  unit: "metric"
-});
-
-view.ui.add(scaleBar, {
-  position: "bottom-left"
-});
-
 
   view.on("drag", collapse);
   view.on("mouse-wheel", collapse);
@@ -291,32 +280,24 @@ view.ui.add(scaleBar, {
       };
 
       // ── Labeling (robust even without basemap) ────────────────────────
-      
-      const largeDamLabels = [{
-  where: "\"Gross Storage Capacity(mcm)\" >= 500",
-  labelExpressionInfo: {
-    expression: "$feature.Name_of_Dam"
-  },
+      const labelingInfo = [{
   labelPlacement: "above-center",
-  symbol: {
-    type: "text",
-    color: [255, 165, 0],
-    haloColor: [0, 0, 0, 0.9],
-    haloSize: "1.2px",
-    font: {
-      size: 9,
-      family: "Arial",
-      weight: "bold"
-    },
-    yoffset: 8
-  }
-}];
 
-const allDamLabels = [{
   labelExpressionInfo: {
-    expression: "$feature.Name_of_Dam"
+    expression: `
+      var z = $view.zoom;
+      var s = Number($feature["Gross Storage Capacity(mcm)"]);
+
+      // Zoomed out → only large dams
+      if (z < 10) {
+        return s >= 500 ? $feature.Name_of_Dam : null;
+      }
+
+      // Zoomed in → all dams
+      return $feature.Name_of_Dam;
+    `
   },
-  labelPlacement: "above-center",
+
   symbol: {
     type: "text",
     color: [255, 165, 0],
@@ -325,68 +306,11 @@ const allDamLabels = [{
     font: {
       size: 8,
       family: "Arial",
-      weight: "normal"
+      weight: "bold"
     },
     yoffset: 8
   }
 }];
-
-
-      const labelingInfo = [
-
-  // ─────────────────────────────────────────────
-  // Zoom < 10  (scale > 560,000)
-  // ONLY large dams (>= 500 mcm)
-  // ─────────────────────────────────────────────
-  {
-    where: "\"Gross Storage Capacity(mcm)\" >= 500",
-    minScale: 0,           // world view
-    maxScale: 560000,      // just before zoom 10
-
-    labelExpressionInfo: {
-      expression: "$feature.Name_of_Dam"
-    },
-    labelPlacement: "above-center",
-    symbol: {
-      type: "text",
-      color: [255, 165, 0],
-      haloColor: [0, 0, 0, 0.9],
-      haloSize: "1.2px",
-      font: {
-        size: 9,
-        family: "Arial",
-        weight: "bold"
-      },
-      yoffset: 8
-    }
-  },
-
-  // ─────────────────────────────────────────────
-  // Zoom ≥ 10  (scale ≤ 560,000)
-  // ALL dams
-  // ─────────────────────────────────────────────
-  {
-    minScale: 560000,
-    maxScale: 0,
-
-    labelExpressionInfo: {
-      expression: "$feature.Name_of_Dam"
-    },
-    labelPlacement: "above-center",
-    symbol: {
-      type: "text",
-      color: [255, 165, 0],
-      haloColor: [0, 0, 0, 0.9],
-      haloSize: "1.2px",
-      font: {
-        size: 8,
-        family: "Arial",
-        weight: "normal"
-      },
-      yoffset: 8
-    }
-  }
-];
 
 
       // ── AUTO-GENERATE FIELDS FROM JSON ATTRIBUTES ─────────────
@@ -404,46 +328,29 @@ if (oidField) oidField.type = "oid";
 
 
       damFeatureLayer = new FeatureLayer({
-  source: features,
-  objectIdField: "OBJECTID",
-  geometryType: "point",
-  spatialReference: { wkid: 4326 },
-  fields: fields,
-  renderer: renderer,
-  visible: true,
-  popupTemplate: {
-    title: "{Name_of_Dam}",
-    content: [
-      {
-        type: "fields",
-        fieldInfos: Object.keys(features[0]?.attributes || {})
-          .filter(k => k !== "OBJECTID")
-          .map(field => ({ fieldName: field, label: field.replace(/_/g, " ") }))
-      }
-    ]
-  }
-});
-
+        source: features,
+        objectIdField: "OBJECTID",
+        geometryType: "point",
+        spatialReference: { wkid: 4326 },
+        fields: fields,
+        renderer: renderer,
+        labelingInfo: labelingInfo,
+        visible: true,
+        popupTemplate: {
+          title: "{Name_of_Dam}",
+          content: [
+            {
+              type: "fields",
+              fieldInfos: Object.keys(features[0]?.attributes || {})
+                .filter(k => k !== "OBJECTID")
+                .map(field => ({ fieldName: field, label: field.replace(/_/g, " ") }))
+            }
+          ]
+        }
+      });
 
       map.add(damFeatureLayer);
 
-      function updateLabelsByZoom(zoom) {
-  if (!damFeatureLayer) return;
-
-  if (zoom < 10) {
-    damFeatureLayer.labelingInfo = largeDamLabels;
-  } else {
-    damFeatureLayer.labelingInfo = allDamLabels;
-  }
-}
-
-// Initial application
-updateLabelsByZoom(view.zoom);
-
-// React to zoom changes
-view.watch("zoom", updateLabelsByZoom);
-
-      
       // Enable/disable with checkbox
       damChk.onchange = () => {
         damFeatureLayer.visible = damChk.checked;
