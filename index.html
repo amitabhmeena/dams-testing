@@ -132,11 +132,12 @@ require([
   "esri/layers/FeatureLayer",
   "esri/Graphic",
   "esri/geometry/Point",
+  "esri/widgets/ScaleBar",
   "esri/config"
 ], function (
   Map, MapView,
   MapImageLayer, FeatureLayer,
-  Graphic, Point, esriConfig
+  Graphic, Point, ScaleBar, esriConfig
 ) {
 
   const isMobile = window.matchMedia("(max-width: 768px)").matches;
@@ -201,6 +202,16 @@ require([
       dockOptions: { position: "top-right", breakpoint: false }
     }
   });
+
+  const scaleBar = new ScaleBar({
+  view: view,
+  unit: "metric"
+});
+
+view.ui.add(scaleBar, {
+  position: "bottom-right"
+});
+
 
   view.on("drag", collapse);
   view.on("mouse-wheel", collapse);
