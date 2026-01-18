@@ -235,13 +235,19 @@ require([
     container: "viewDiv",
     map,
     extent: { xmin: 68, ymin: 6, xmax: 97, ymax: 37, spatialReference: { wkid: 4326 } },
-    popup: {
-  dockEnabled: true,
-  dockOptions: {
-    position: isMobile ? "bottom-center" : "top-right",
-    breakpoint: true
-  }
-}
+    
+    popup: isMobile || isIOS
+  ? {
+      dockEnabled: false
+    }
+  : {
+      dockEnabled: true,
+      dockOptions: {
+        position: "top-right",
+        breakpoint: false
+      }
+    }
+
 
   });
 
@@ -257,14 +263,6 @@ require([
     controls.classList.add("collapsed");
   });
 }
-  
-  view.when(() => {
-  if (isMobile) {
-    view.popup.defaultPopupTemplateEnabled = true;
-    view.popup.collapseEnabled = false;
-  }
-});
-
 
   let hoFeatureLayer;
 
