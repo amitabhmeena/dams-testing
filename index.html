@@ -125,6 +125,11 @@
 <div id="viewDiv"></div>
 
 <script>
+  esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurKdAwSbr3tap2eaxJY7Eqwza-FGiC6bjE-hhpBRvGJ2wetQQjnhvGQfBfVQobJG-ANX5sxTMzpw0QiigaRvyuW7gREVU3pUWTk1dSgFj6xBR353vvMeO-WNLBJpcGnOnvEkDG82Xf60n6wfPw5HrE7SYFMjixSa8vs-nBgyr8K0reILbc5rqll7_32NZTRrPAaKigglR4H_X_G8N0fl2MY8.AT1_oPY0JXcr";
+
+  const worldLocator =
+  "https://geocode-api.arcgis.com/arcgis/rest/services/World/GeocodeServer";
+
 require([
   "esri/Map",
   "esri/views/MapView",
@@ -133,11 +138,12 @@ require([
   "esri/Graphic",
   "esri/geometry/Point",
   "esri/widgets/ScaleBar",
+  "esri/rest/locator",
   "esri/config"
 ], function (
   Map, MapView,
   MapImageLayer, FeatureLayer,
-  Graphic, Point, ScaleBar, esriConfig
+  Graphic, Point, ScaleBar, esriConfig, locator
 ) {
 
   const isMobile = window.matchMedia("(max-width: 768px)").matches;
