@@ -295,12 +295,13 @@ view.ui.add(scaleBar, {
       const labelingInfo = [
 
   // ─────────────────────────────────────────────
-  // Zoom < 10  → ONLY large dams (>= 500 mcm)
+  // Zoom < 10  (scale > 560,000)
+  // ONLY large dams (>= 500 mcm)
   // ─────────────────────────────────────────────
   {
     where: "\"Gross Storage Capacity(mcm)\" >= 500",
-    minScale: 560000,    // zoom < 10
-    maxScale: 0,         // applies up to world view
+    minScale: 0,           // world view
+    maxScale: 560000,      // just before zoom 10
 
     labelExpressionInfo: {
       expression: "$feature.Name_of_Dam"
@@ -321,11 +322,12 @@ view.ui.add(scaleBar, {
   },
 
   // ─────────────────────────────────────────────
-  // Zoom ≥ 10 → ALL dams
+  // Zoom ≥ 10  (scale ≤ 560,000)
+  // ALL dams
   // ─────────────────────────────────────────────
   {
-    minScale: 0,         // zoom ≥ 10
-    maxScale: 560000,
+    minScale: 560000,
+    maxScale: 0,
 
     labelExpressionInfo: {
       expression: "$feature.Name_of_Dam"
@@ -345,6 +347,7 @@ view.ui.add(scaleBar, {
     }
   }
 ];
+
 
       // ── AUTO-GENERATE FIELDS FROM JSON ATTRIBUTES ─────────────
 const sampleAttrs = features[0].attributes;
