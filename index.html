@@ -180,19 +180,7 @@ require([
   const isMobile = window.matchMedia("(max-width: 768px)").matches;
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const controls = document.getElementById("controls");
-  if (isMobile || isIOS) {
-  controls.classList.add("collapsed");
-
-  controls.addEventListener("click", e => {
-    e.stopPropagation();
-    controls.classList.remove("collapsed");
-  });
-
-  view.on("click", () => {
-    controls.classList.add("collapsed");
-  });
-}
-
+  
 
   function collapse() { if (isMobile || isIOS) controls.classList.add("collapsed"); }
   function expand() { if (isMobile || isIOS) controls.classList.remove("collapsed"); }
@@ -256,6 +244,20 @@ require([
 }
 
   });
+
+  if (isMobile || isIOS) {
+  controls.classList.add("collapsed");
+
+  controls.addEventListener("click", e => {
+    e.stopPropagation();
+    controls.classList.remove("collapsed");
+  });
+
+  view.on("click", () => {
+    controls.classList.add("collapsed");
+  });
+}
+  
   view.when(() => {
   if (isMobile) {
     view.popup.defaultPopupTemplateEnabled = true;
@@ -346,12 +348,12 @@ view.ui.add(scaleBar, {
 });
 
 
+  if (!isMobile && !isIOS) {
   view.on("drag", collapse);
   view.on("mouse-wheel", collapse);
-  view.on("click", collapse);
-  view.on("pointer-down", collapse);
-  view.on("touchstart", collapse);
-  damSearch.addEventListener("focus", expand);
+}
+
+   damSearch.addEventListener("focus", expand);
 
   basemapSelect.onchange = () => {
     map.basemap =
