@@ -345,9 +345,9 @@ geojson.features.forEach((f, i) => {
         type: "simple",
         symbol: {
           type: "simple-fill",
-          color: [255, 255, 0, 0.05],
+          color: [0, 0, 0, 0],
           outline: {
-            color: [255, 255, 0, 0.9],
+            color: [255, 255, 0, 1],
             width: 1
           }
         }
@@ -358,7 +358,7 @@ geojson.features.forEach((f, i) => {
       title: "River Basins"
     });
 
-    map.add(riverBasinsLayer);
+    map.add(riverBasinsLayer, 0);
 
     riverBasinsChk.onchange = () => {
       riverBasinsLayer.visible = riverBasinsChk.checked;
