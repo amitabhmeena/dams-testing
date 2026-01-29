@@ -221,6 +221,51 @@ require([
     visible: false
   }); */
   
+  
+
+  // ──────────────────────────────────────────────────────────────
+  //  FeatureLayer for Dams (points + labels)
+  // ──────────────────────────────────────────────────────────────
+  let damFeatureLayer;
+
+  const map = new Map({
+    basemap: "satellite",
+    layers: [stateLayer, districtLayer, riverLayer, watershedLayer]
+  });
+
+  const view = new MapView({
+    container: "viewDiv",
+    map,
+    extent: { xmin: 68, ymin: 6, xmax: 97, ymax: 37, spatialReference: { wkid: 4326 } },
+    
+    popup: isMobile || isIOS
+  ? {
+      dockEnabled: false
+    }
+  : {
+      dockEnabled: true,
+      dockOptions: {
+        position: "top-right",
+        breakpoint: false
+      }
+    }
+
+
+  });
+
+  if (isMobile || isIOS) {
+  controls.classList.add("collapsed");
+
+  controls.addEventListener("click", e => {
+    e.stopPropagation();
+    controls.classList.remove("collapsed");
+  });
+
+  view.on("click", () => {
+    controls.classList.add("collapsed");
+  });
+}
+
   // Feature layer for dams
   
   let watershedLayer;
@@ -275,50 +320,7 @@ fetch("river-basins.geojson")
     };
   });
 
-
-  // ──────────────────────────────────────────────────────────────
-  //  FeatureLayer for Dams (points + labels)
-  // ──────────────────────────────────────────────────────────────
-  let damFeatureLayer;
-
-  const map = new Map({
-    basemap: "satellite",
-    layers: [stateLayer, districtLayer, riverLayer, watershedLayer]
-  });
-
-  const view = new MapView({
-    container: "viewDiv",
-    map,
-    extent: { xmin: 68, ymin: 6, xmax: 97, ymax: 37, spatialReference: { wkid: 4326 } },
-    
-    popup: isMobile || isIOS
-  ? {
-      dockEnabled: false
-    }
-  : {
-      dockEnabled: true,
-      dockOptions: {
-        position: "top-right",
-        breakpoint: false
-      }
-    }
-
-
-  });
-
-  if (isMobile || isIOS) {
-  controls.classList.add("collapsed");
-
-  controls.addEventListener("click", e => {
-    e.stopPropagation();
-    controls.classList.remove("collapsed");
-  });
-
-  view.on("click", () => {
-    controls.classList.add("collapsed");
-  });
-}
-
+  // feature layer for ho sites
   let hoFeatureLayer;
 
 fetch("ho-sites.geojson")
