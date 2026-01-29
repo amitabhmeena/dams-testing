@@ -132,6 +132,7 @@ input[type="text"], select {
     <div class="section">Basemap</div>
     <select id="basemapSelect">
       <option value="satellite" selected>Satellite</option>
+	  <option value="hybrid">Hybrid (Satellite + Labels)</option>
       <option value="topo">Topographic</option>
       <option value="streets">Street</option>
       <option value="none">No basemap</option>
@@ -459,6 +460,7 @@ view.ui.add(scaleBar, {
     map.basemap =
       basemapSelect.value === "none" ? null :
       basemapSelect.value === "satellite" ? "satellite" :
+	  basemapSelect.value === "hybrid" ? "hybrid" :
       basemapSelect.value === "streets" ? "streets-vector" :
       "topo-vector";
   };
