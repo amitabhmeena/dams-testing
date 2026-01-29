@@ -272,14 +272,13 @@ require([
     labelExpressionInfo: {
       expression: `
 		Proper($feature.BA_NAME)
-      `
     },
     labelPlacement: "polygon-center",
     minScale: 15000000,   // show from country level
     maxScale: 0,
     symbol: {
       type: "text",
-      color: [255, 165, 0, 0.9],
+      color: [255, 140, 0, 0.9],
       haloColor: [0, 0, 0, 0],
       haloSize: "0px",
       font: {
@@ -347,7 +346,7 @@ geojson.features.forEach((f, i) => {
           type: "simple-fill",
           color: [0, 0, 0, 0],
           outline: {
-            color: [255, 165, 0, 0.9],
+            color: [255, 140, 0, 0.9],
             width: 1.5
           }
         }
