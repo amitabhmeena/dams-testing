@@ -141,7 +141,7 @@ input[type="text"], select {
     <label><input type="checkbox" id="stateChk" checked> State Boundary</label><br>
     <label><input type="checkbox" id="districtChk"> District Boundary</label><br>
     <label><input type="checkbox" id="riverChk"> River</label><br>
-    <label><input type="checkbox" id="watershedChk"> Watershed</label><br>
+    <label><input type="checkbox" id="river-basinsChk"> River-Basins</label><br>
     <label><input type="checkbox" id="damChk" checked> Dams</label><br>
     <label><input type="checkbox" id="hoChk"> HO Sites</label>
 
@@ -196,7 +196,7 @@ require([
         p.requestOptions.query.token = "KLafX5W7tKxU3qXCTtWzmiub5IsvSYcYf8OYVbFZaO_5Dlji_67_mzrUu6qCgWJ6djeLy_izw-rxbEWms3Ss0g..";
       else if (u.includes("River"))
         p.requestOptions.query.token = "aprsZsvhLhQlrHeo2O-9F-PWMUmaTr7awaxuyKOXtWOMMp0VVG70sfDnNltnsh3SLOqcK8zLNCvPqBThYxn5tw..";
-      else if (u.includes("Watershed"))
+      else if (u.includes("River-Basins"))
         p.requestOptions.query.token = "LYFmEZL-IKy3-iAuFBbGMpNs0rPaWFMD5KuaJUT7I6OFXUWRxnUhDjR3SJfE-ndgh9aAdyua9Cs8b9POB7R51Q..";
     }
   });
@@ -216,8 +216,8 @@ require([
     visible: false
   });
 
-  /* const watershedLayer = new MapImageLayer({
-    url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/Watershed/MapServer",
+  /* const river-basinsLayer = new MapImageLayer({
+    url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/River-Basins/MapServer",
     visible: false
   }); */
   
@@ -268,7 +268,7 @@ require([
 
   // Feature layer for dams
   
-  let watershedLayer;
+  let river-basinsLayer;
 
 fetch("river-basins.geojson")
   .then(r => r.json())
@@ -311,7 +311,7 @@ geojson.features.forEach((f, i) => {
       type: k === "OBJECTID" ? "oid" : "string"
     }));
 
-    watershedLayer = new FeatureLayer({
+    river-basinsLayer = new FeatureLayer({
       source: features,
       objectIdField: "OBJECTID",
       geometryType: "polygon",
@@ -332,10 +332,10 @@ geojson.features.forEach((f, i) => {
       title: "River Basins"
     });
 
-    map.add(watershedLayer);
+    map.add(river-basinsLayer);
 
-    watershedChk.onchange = () => {
-      watershedLayer.visible = watershedChk.checked;
+    river-basinsChk.onchange = () => {
+      river-basinsLayer.visible = river-basinsChk.checked;
     };
   });
 
@@ -440,7 +440,7 @@ view.ui.add(scaleBar, {
   stateChk.onchange = () => stateLayer.visible = stateChk.checked;
   districtChk.onchange = () => districtLayer.visible = districtChk.checked;
   riverChk.onchange = () => riverLayer.visible = riverChk.checked;
-  watershedChk.onchange = () => watershedLayer.visible = watershedChk.checked;
+  river-basinsChk.onchange = () => river-basinsLayer.visible = river-basinsChk.checked;
 
   damChk.onchange = () => {
     if (damFeatureLayer) damFeatureLayer.visible = damChk.checked;
