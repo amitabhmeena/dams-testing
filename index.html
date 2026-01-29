@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
-<title>India Map – Dams & Boundaries</title>
+<title>Specified dams - India</title>
 
 <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
 <script src="https://js.arcgis.com/4.29/"></script>
@@ -142,7 +142,7 @@ input[type="text"], select {
     <label><input type="checkbox" id="districtChk"> District Boundary</label><br>
     <label><input type="checkbox" id="riverChk"> River</label><br>
     <label><input type="checkbox" id="watershedChk"> Watershed</label><br>
-    <label><input type="checkbox" id="damChk" checked> Dams & Labels</label>
+    <label><input type="checkbox" id="damChk" checked> Dams</label><br>
     <label><input type="checkbox" id="hoChk"> HO Sites</label>
 
 
@@ -216,10 +216,65 @@ require([
     visible: false
   });
 
-  const watershedLayer = new MapImageLayer({
+  /* const watershedLayer = new MapImageLayer({
     url: "https://mapservice.gov.in/gismapservice/rest/services/BharatMapService/Watershed/MapServer",
     visible: false
+  }); */
+  
+  // Feature layer for dams
+  
+  let watershedLayer;
+
+fetch("river-basins.geojson")
+  .then(r => r.json())
+  .then(geojson => {
+
+    const features = geojson.features.map((f, i) => ({
+      geometry: {
+        type: "polygon",
+        rings: f.geometry.coordinates[0],
+        spatialReference: { wkid: 4326 }
+      },
+      attributes: {
+        OBJECTID: i + 1,
+        ...f.properties
+      }
+    }));
+
+    const fields = Object.keys(features[0].attributes).map(k => ({
+      name: k,
+      alias: k.replace(/_/g, " "),
+      type: k === "OBJECTID" ? "oid" : "string"
+    }));
+
+    watershedLayer = new FeatureLayer({
+      source: features,
+      objectIdField: "OBJECTID",
+      geometryType: "polygon",
+      spatialReference: { wkid: 4326 },
+      fields: fields,
+      renderer: {
+        type: "simple",
+        symbol: {
+          type: "simple-fill",
+          color: [0, 0, 255, 0.05],
+          outline: {
+            color: [0, 0, 180, 0.8],
+            width: 1
+          }
+        }
+      },
+      visible: false,
+      title: "River Basins"
+    });
+
+    map.add(watershedLayer);
+
+    watershedChk.onchange = () => {
+      watershedLayer.visible = watershedChk.checked;
+    };
   });
+
 
   // ──────────────────────────────────────────────────────────────
   //  FeatureLayer for Dams (points + labels)
