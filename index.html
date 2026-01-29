@@ -271,16 +271,16 @@ require([
   {
     labelExpressionInfo: {
       expression: `
-        Proper($feature.BASIN_NAME)
+        Proper($feature.BA_NAME)
       `
     },
-    labelPlacement: "always-horizontal",
-    minScale: 5000000,   // show only when zoomed in
+    labelPlacement: "polygon-center",
+    minScale: 15000000,   // show from country level
     maxScale: 0,
     symbol: {
       type: "text",
-      color: [0, 80, 0, 0.9],
-      haloColor: [255, 255, 255, 0.9],
+      color: [255, 255, 200, 0.95],
+      haloColor: [0, 0, 0, 0.9],
       haloSize: "1.5px",
       font: {
         family: "Arial",
@@ -290,6 +290,7 @@ require([
     }
   }
 ];
+
 
   let riverBasinsLayer;
 
@@ -344,16 +345,16 @@ geojson.features.forEach((f, i) => {
         type: "simple",
         symbol: {
           type: "simple-fill",
-          color: [0, 0, 255, 0.05],
+          color: [255, 255, 0, 0.05],
           outline: {
-            color: [0, 0, 180, 0.8],
+            color: [255, 255, 0, 0.9],
             width: 1
           }
         }
       },
       labelingInfo: riverBasinsLabeling,
-	  labelsVisible: true,
-	  visible: false,
+	    labelsVisible: true,
+	    visible: false,
       title: "River Basins"
     });
 
