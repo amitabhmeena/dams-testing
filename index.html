@@ -230,7 +230,7 @@ require([
 
   const map = new Map({
     basemap: "satellite",
-    layers: [stateLayer, districtLayer, riverLayer, watershedLayer]
+    layers: [stateLayer, districtLayer, riverLayer]
   });
 
   const view = new MapView({
@@ -274,17 +274,36 @@ fetch("river-basins.geojson")
   .then(r => r.json())
   .then(geojson => {
 
-    const features = geojson.features.map((f, i) => ({
+    const features = [];
+
+geojson.features.forEach((f, i) => {
+  if (!f.geometry) return;
+
+  if (f.geometry.type === "Polygon") {
+    features.push({
       geometry: {
         type: "polygon",
-        rings: f.geometry.coordinates[0],
+        rings: f.geometry.coordinates,
         spatialReference: { wkid: 4326 }
       },
-      attributes: {
-        OBJECTID: i + 1,
-        ...f.properties
-      }
-    }));
+      attributes: { OBJECTID: i + 1, ...f.properties }
+    });
+  }
+
+  if (f.geometry.type === "MultiPolygon") {
+    f.geometry.coordinates.forEach((poly, j) => {
+      features.push({
+        geometry: {
+          type: "polygon",
+          rings: poly,
+          spatialReference: { wkid: 4326 }
+        },
+        attributes: { OBJECTID: i * 1000 + j, ...f.properties }
+      });
+    });
+  }
+});
+
 
     const fields = Object.keys(features[0].attributes).map(k => ({
       name: k,
