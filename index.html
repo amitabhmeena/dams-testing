@@ -271,7 +271,11 @@ require([
   {
     labelExpressionInfo: {
       expression: `
-        Proper($feature.BA_NAME)
+		Proper($feature.BA_NAME)
+  .replace(/ and /gi, " and\n")
+  .replace(/ of /gi, " of\n")
+  .replace(/ in /gi, " in\n")
+  .replace(/ the /gi, " the\n")
       `
     },
     labelPlacement: "polygon-center",
