@@ -267,7 +267,30 @@ require([
 }
 
   // Feature layer for dams
-  
+  const riverBasinsLabeling = [
+  {
+    labelExpressionInfo: {
+      expression: `
+        Proper($feature.BASIN_NAME)
+      `
+    },
+    labelPlacement: "always-horizontal",
+    minScale: 5000000,   // show only when zoomed in
+    maxScale: 0,
+    symbol: {
+      type: "text",
+      color: [0, 80, 0, 0.9],
+      haloColor: [255, 255, 255, 0.9],
+      haloSize: "1.5px",
+      font: {
+        family: "Arial",
+        size: 11,
+        weight: "bold"
+      }
+    }
+  }
+];
+
   let riverBasinsLayer;
 
 fetch("river-basins.geojson")
@@ -328,7 +351,9 @@ geojson.features.forEach((f, i) => {
           }
         }
       },
-      visible: false,
+      labelingInfo: riverBasinsLabeling,
+	  labelsVisible: true,
+	  visible: false,
       title: "River Basins"
     });
 
