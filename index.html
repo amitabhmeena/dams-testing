@@ -272,10 +272,6 @@ require([
     labelExpressionInfo: {
       expression: `
 		Proper($feature.BA_NAME)
-  .replace(/ and /gi, " and\n")
-  .replace(/ of /gi, " of\n")
-  .replace(/ in /gi, " in\n")
-  .replace(/ the /gi, " the\n")
       `
     },
     labelPlacement: "polygon-center",
@@ -283,7 +279,7 @@ require([
     maxScale: 0,
     symbol: {
       type: "text",
-      color: [120, 30, 60, 0.9],
+      color: [255, 165, 0, 0.9],
       haloColor: [0, 0, 0, 0],
       haloSize: "0px",
       font: {
@@ -351,8 +347,8 @@ geojson.features.forEach((f, i) => {
           type: "simple-fill",
           color: [0, 0, 0, 0],
           outline: {
-            color: [120, 30, 60, 0.9],
-            width: 1
+            color: [255, 165, 0, 0.9],
+            width: 1.5
           }
         }
       },
