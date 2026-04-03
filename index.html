@@ -112,6 +112,18 @@ input[type="text"], select {
   word-break: break-word;
 }
 
+/* 4. Specific fix for Mobile/iOS internal tables */
+.esri-view-width-xsmall .esri-popup__main-container,
+.esri-view-width-small .esri-popup__main-container {
+  width: 95% !important; /* Ensures the box fits the mobile screen */
+}
+
+/* Forces the internal table element to fill the container on mobile */
+.esri-feature-fields__table {
+  width: 100% !important;
+  table-layout: fixed !important; /* Crucial for percentage widths to work */
+}
+
 /* ───────── Mobile specific ───────── */
 @media (max-width: 768px) {
 
