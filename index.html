@@ -93,6 +93,12 @@ input[type="text"], select {
   display: none;
 }
 
+/* Increase popup width on Desktop */
+.esri-view-width-greater-than-medium .esri-popup__main-container {
+  width: 500px !important; /* Adjust this value as needed (default is ~340px) */
+  max-height: 90% !important;
+}
+
 /* ───────── Mobile specific ───────── */
 @media (max-width: 768px) {
 
