@@ -112,16 +112,34 @@ input[type="text"], select {
   word-break: break-word;
 }
 
-/* 4. Specific fix for Mobile/iOS internal tables */
-.esri-view-width-xsmall .esri-popup__main-container,
-.esri-view-width-small .esri-popup__main-container {
-  width: 95% !important; /* Ensures the box fits the mobile screen */
+/* 1. Remove the large left padding/margin in the popup content on mobile */
+.esri-view-width-xsmall .esri-popup__content,
+.esri-view-width-small .esri-popup__content {
+  margin: 0 !important;
+  padding: 10px !important; /* Small padding so text doesn't hit the edge */
 }
 
-/* Forces the internal table element to fill the container on mobile */
+/* 2. Force the internal container and table to 100% width */
+.esri-popup__main-container,
+.esri-popup__body,
+.esri-feature-fields,
 .esri-feature-fields__table {
   width: 100% !important;
-  table-layout: fixed !important; /* Crucial for percentage widths to work */
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* 3. Ensure the table cells use the 30/70 split correctly on mobile */
+.esri-feature-fields__field-header {
+  width: 30% !important;
+  min-width: 30% !important;
+  word-break: break-word !important;
+}
+
+.esri-feature-fields__field-value {
+  width: 70% !important;
+  min-width: 70% !important;
+  word-break: break-word !important;
 }
 
 /* ───────── Mobile specific ───────── */
