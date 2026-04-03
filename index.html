@@ -11,155 +11,156 @@
 
 <style>
   html, body, #viewDiv {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+  }
+
+  /* ───────── Controls panel ───────── */
+  #controls {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: white;
+    padding: 14px;
+    z-index: 99;
+    font-size: 13px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    width: 340px;
+    border-radius: 10px;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    transition: transform 0.3s ease;
+  }
+
+  #controls.collapsed {
+    transform: translateY(-92%);
+  }
+
+  input[type="text"], select {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px;
+    margin-top: 6px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 16px; /* iOS zoom fix */
+  }
+
+  .section {
+    font-weight: bold;
+    margin-top: 10px;
+  }
+
+  #results {
+    max-height: 35vh;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    display: none;
+  }
+
+  .result-item {
+    padding: 10px;
+    cursor: pointer;
+  }
+
+  .result-item:hover,
+  .result-item.active {
+    background: #e6e6e6;
+  }
+
+  .search-wrap {
+    position: relative;
+  }
+
+  #clearSearch {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    font-size: 22px;
+    cursor: pointer;
+    display: none;
+  }
+
+  /* 1. Eliminate the side padding on mobile to use full screen width */
+.esri-view-width-xsmall .esri-popup__main-container,
+.esri-view-width-small .esri-popup__main-container {
+  width: 98vw !important; /* Leaves only 1% padding on each side */
+  max-width: 98vw !important;
+  margin: 0 auto !important;
+  left: 1vw !important; 
 }
 
-/* ───────── Controls panel ───────── */
-#controls {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  background: white;
-  padding: 14px;
-  z-index: 99;
-  font-size: 13px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-  width: 340px;
-  border-radius: 10px;
-  max-height: calc(100vh - 24px);
-  overflow-y: auto;
-  transition: transform 0.3s ease;
-}
-
-/* Collapsed on mobile */
-#controls.collapsed {
-  transform: translateY(-92%);
-}
-
-/* Inputs */
-input[type="text"], select {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 10px;
-  margin-top: 6px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 16px; /* iOS zoom fix */
-}
-
-.section {
-  font-weight: bold;
-  margin-top: 10px;
-}
-
-/* Search results */
-#results {
-  max-height: 35vh;
-  overflow-y: auto;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  display: none;
-}
-
-.result-item {
-  padding: 10px;
-  cursor: pointer;
-}
-
-.result-item:hover,
-.result-item.active {
-  background: #e6e6e6;
-}
-
-/* Clear button */
-.search-wrap {
-  position: relative;
-}
-
-#clearSearch {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  border: none;
-  background: transparent;
-  font-size: 22px;
-  cursor: pointer;
-  display: none;
-}
-
-/* 1. Make the overall popup container wider on Desktop */
-.esri-view .esri-popup__main-container {
-  width: 500px !important;
-  max-width: 550px !important;
-}
-
-/* 3. Make the Field Header (label) column smaller than the Value column */
-.esri-feature-fields__field-header {
-  width: 30% !important; /* Label takes up 30% */
-  padding-right: 8px !important;
-  word-break: break-word;
-}
-
-/* 4. Make the Field Value (data) column wide */
-.esri-feature-fields__field-value {
-  width: 70% !important; /* Data takes up 70% */
-  word-break: break-word;
-}
-
-/* 1. Remove the large left padding/margin in the popup content on mobile */
 .esri-view-width-xsmall .esri-popup__content,
 .esri-view-width-small .esri-popup__content {
+  padding: 0 !important;
   margin: 0 !important;
-  padding: 10px !important; /* Small padding so text doesn't hit the edge */
 }
 
-/* 2. Force the internal container and table to 100% width */
-.esri-popup__main-container,
-.esri-popup__body,
-.esri-feature-fields,
+/* 2. Force the Table to respect percentage widths */
 .esri-feature-fields__table {
   width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
+  table-layout: fixed !important; /* This is mandatory to force the 30/70 split */
+  border-collapse: collapse !important;
+  margin: 0 !important;
 }
 
-/* 3. Ensure the table cells use the 30/70 split correctly on mobile */
+/* 3. Explicitly define the column ratios */
 .esri-feature-fields__field-header {
   width: 30% !important;
   min-width: 30% !important;
+  max-width: 30% !important;
+  padding: 10px 6px !important;
   word-break: break-word !important;
+  border-right: 1px solid #e0e0e0 !important; /* Optional: adds a vertical divider */
 }
 
 .esri-feature-fields__field-value {
   width: 70% !important;
   min-width: 70% !important;
+  max-width: 70% !important;
+  padding: 10px 8px !important;
   word-break: break-word !important;
 }
 
-/* ───────── Mobile specific ───────── */
-@media (max-width: 768px) {
-
-  #controls {
-    width: 94%;
-    left: 3%;
-    top: auto;
-    bottom: 12px;
-    border-radius: 14px;
-  }
-
-  #controls.collapsed {
-    transform: translateY(calc(100% - 42px));
-  }
-
+/* 4. Desktop wide-view override */
+.esri-view-width-greater-than-small .esri-popup__main-container {
+  width: 500px !important;
 }
 
+/* 5. Font Styles (Normal weight) */
+.esri-feature-fields__field-header,
+.esri-feature-fields__field-value {
+  font-family: Arial, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  color: #333 !important;
+}
+
+  /* ───────── Mobile specific (Bottom Controls) ───────── */
+  @media (max-width: 768px) {
+    #controls {
+      width: 94%;
+      left: 3%;
+      top: auto;
+      bottom: 12px;
+      border-radius: 14px;
+    }
+
+    #controls.collapsed {
+      transform: translateY(calc(100% - 42px));
+    }
+  }
 </style>
+
+
 <!-- Google Analytics GA4 -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-58510VNE1R"></script>
 <script>
