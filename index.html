@@ -93,15 +93,25 @@ input[type="text"], select {
   display: none;
 }
 
-/* Increase popup width on Desktop */
-.esri-view-width-greater-than-medium .esri-popup__main-container {
-  width: 500px !important; /* Adjust this value as needed (default is ~340px) */
-  max-height: 90% !important;
+/* 1. Make the overall popup container wider on Desktop */
+.esri-view .esri-popup__main-container {
+  width: 500px !important;
+  max-width: 550px !important;
 }
+
+/* 3. Make the Field Header (label) column smaller than the Value column */
 .esri-feature-fields__field-header {
-  width: 30%; /* Gives the label more room */
-  font-weight: bold;
+  width: 30% !important; /* Label takes up 30% */
+  padding-right: 8px !important;
+  word-break: break-word;
 }
+
+/* 4. Make the Field Value (data) column wide */
+.esri-feature-fields__field-value {
+  width: 70% !important; /* Data takes up 70% */
+  word-break: break-word;
+}
+
 /* ───────── Mobile specific ───────── */
 @media (max-width: 768px) {
 
