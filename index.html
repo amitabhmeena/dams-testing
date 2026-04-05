@@ -146,22 +146,20 @@
 
   /* ───────── Mobile specific (Bottom Controls) ───────── */
   @media (max-width: 768px) {
-    #controls {
-      width: 94%;
-      left: 50% !important; /* Move to center */
-      transform: translateX(-50%); /* Offset by half its width to center exactly */
-      top: auto;
-      bottom: 12px;
-      border-radius: 14px;
-      margin: 0; /* Remove any default margins */
-      box-sizing: border-box;
-    }
+  #controls {
+    width: 94%;
+    left: 50% !important;
+    bottom: 12px;
+    transform: translateX(-50%) !important; /* Centers it */
+    z-index: 99;
+    transition: transform 0.3s ease;
+  }
 
-    /* This handles the collapsed state while keeping it centered */
-    #controls.collapsed {
-      transform: translate(-50%, calc(100% - 45px)) !important;
-    }
-  }}
+  #controls.collapsed {
+    /* Keeps it centered (-50%) while sliding it down (calc) */
+    transform: translate(-50%, calc(100% - 45px)) !important;
+  }
+}
 </style>
 
 
@@ -248,19 +246,8 @@ require([
   const controls = document.getElementById("controls");
   
 
-  function collapse() { 
-  const ctrl = document.getElementById("controls");
-  if (window.innerWidth <= 768 || /iPad|iPhone|iPod/.test(navigator.userAgent)) {
-    ctrl.classList.add("collapsed"); 
-   }
-  }
-
-function expand() { 
-  const ctrl = document.getElementById("controls");
-  if (window.innerWidth <= 768 || /iPad|iPhone|iPod/.test(navigator.userAgent)) {
-    ctrl.classList.remove("collapsed"); 
-   }
-  }
+  function collapse() { if (isMobile || isIOS) controls.classList.add("collapsed"); }
+  function expand() { if (isMobile || isIOS) controls.classList.remove("collapsed"); }
 
   esriConfig.request.interceptors.push({
     urls: /mapservice\.gov\.in/,
@@ -973,32 +960,27 @@ if (ownerMatches.length && !isDamMatch) {
   function selectDam(index) {
     const feature = currentMatches[index];
     if (!feature) return;
+    controls.classList.add("collapsed");
+	
+	document.getElementById("results").style.display = "none";
+    damSearch.value = feature.attributes.Name;
+    document.getElementById("clearSearch").style.display = "block";
+    activeIndex = -1;
 
-    // Force the UI to collapse first
-    collapse();
-    
-    // Tiny delay to ensure the CSS transition starts before the map heavy lifting
-    setTimeout(() => {
-      document.getElementById("results").style.display = "none";
-      damSearch.value = feature.attributes.Name;
-      document.getElementById("clearSearch").style.display = "block";
-      activeIndex = -1;
-
-      view.popup.close();
-      view.goTo({ target: feature.geometry, zoom: 11 }, { duration: 2000 })
-        .then(() => {
-          view.popup.open({
-            features: [feature],
-            location: feature.geometry
-          });
+    view.popup.close();
+    view.goTo({ target: feature.geometry, zoom: 11 }, { duration: 2000 })
+      .then(() => {
+        view.popup.open({
+          features: [feature],
+          location: feature.geometry
         });
-    }, 50); 
+      });
   }
 
   function selectOwner(index) {
-  collapse();
   const group = groupedResults[index];
   if (!group) return;
+  controls.classList.add("collapsed");
 
   results.style.display = "none";
   damSearch.value = group.owner;
@@ -1027,9 +1009,10 @@ if (ownerMatches.length && !isDamMatch) {
   });
 }
   function selectHealth(index) {
-  collapse();
   const group = groupedResults[index];
   if (!group) return;
+  controls.classList.add("collapsed");
+
   results.style.display = "none";
   damSearch.value = group.health;
   document.getElementById("clearSearch").style.display = "block";
