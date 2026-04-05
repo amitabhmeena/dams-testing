@@ -149,7 +149,7 @@
     #controls {
       width: 94%;
       left: 50% !important; /* Move to center */
-      transform: translateX(-50%); /* Offset by half its width to center exactly */
+      transform: translate(-50%, 0); /* Offset by half its width to center exactly */
       top: auto;
       bottom: 12px;
       border-radius: 14px;
@@ -248,7 +248,16 @@ require([
   const controls = document.getElementById("controls");
   
 
-  function collapse() { if (isMobile || isIOS) controls.classList.add("collapsed"); }
+  function collapse() {
+  if (isMobile || isIOS) {
+    controls.classList.add("collapsed");
+
+    // force UI update (important on iOS Safari)
+    controls.style.display = "none";
+    controls.offsetHeight; // trigger reflow
+    controls.style.display = "";
+  }
+}
   function expand() { if (isMobile || isIOS) controls.classList.remove("collapsed"); }
 
   esriConfig.request.interceptors.push({
