@@ -320,6 +320,10 @@ require([
 
   });
 
+  view.popup.watch("visible", function(isVisible) {
+  if (isVisible) collapse();
+});
+
   // locate
 const locateWidget = new Locate({
   view: view,
