@@ -146,20 +146,18 @@
 
   /* ───────── Mobile specific (Bottom Controls) ───────── */
   @media (max-width: 768px) {
-  #controls {
-    width: 94%;
-    left: 50% !important;
-    bottom: 12px;
-    transform: translateX(-50%) !important; /* Centers it */
-    z-index: 99;
-    transition: transform 0.3s ease;
-  }
+    #controls {
+      width: 94%;
+      left: 3%;
+      top: auto;
+      bottom: 12px;
+      border-radius: 14px;
+    }
 
-  #controls.collapsed {
-    /* Keeps it centered (-50%) while sliding it down (calc) */
-    transform: translate(-50%, calc(100% - 45px)) !important;
+    #controls.collapsed {
+      transform: translateY(calc(100% - 42px));
+    }
   }
-}
 </style>
 
 
@@ -960,8 +958,7 @@ if (ownerMatches.length && !isDamMatch) {
   function selectDam(index) {
     const feature = currentMatches[index];
     if (!feature) return;
-    controls.classList.add("collapsed");
-	
+	collapse();
 	document.getElementById("results").style.display = "none";
     damSearch.value = feature.attributes.Name;
     document.getElementById("clearSearch").style.display = "block";
@@ -980,7 +977,7 @@ if (ownerMatches.length && !isDamMatch) {
   function selectOwner(index) {
   const group = groupedResults[index];
   if (!group) return;
-  controls.classList.add("collapsed");
+  collapse();
 
   results.style.display = "none";
   damSearch.value = group.owner;
@@ -1011,8 +1008,7 @@ if (ownerMatches.length && !isDamMatch) {
   function selectHealth(index) {
   const group = groupedResults[index];
   if (!group) return;
-  controls.classList.add("collapsed");
-
+  collapse();
   results.style.display = "none";
   damSearch.value = group.health;
   document.getElementById("clearSearch").style.display = "block";
