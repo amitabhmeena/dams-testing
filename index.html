@@ -148,17 +148,20 @@
   @media (max-width: 768px) {
     #controls {
       width: 94%;
-      left: 3%;
+      left: 50% !important; /* Move to center */
+      transform: translateX(-50%); /* Offset by half its width to center exactly */
       top: auto;
       bottom: 12px;
       border-radius: 14px;
-      z-index: 99;
+      margin: 0; /* Remove any default margins */
+      box-sizing: border-box;
     }
 
+    /* This handles the collapsed state while keeping it centered */
     #controls.collapsed {
-      transform: translateY(calc(100% - 45px));
+      transform: translate(-50%, calc(100% - 45px)) !important;
     }
-  }
+  }}
 </style>
 
 
@@ -968,22 +971,28 @@ if (ownerMatches.length && !isDamMatch) {
 });
 
   function selectDam(index) {
-    collapse();
     const feature = currentMatches[index];
     if (!feature) return;
-	document.getElementById("results").style.display = "none";
-    damSearch.value = feature.attributes.Name;
-    document.getElementById("clearSearch").style.display = "block";
-    activeIndex = -1;
 
-    view.popup.close();
-    view.goTo({ target: feature.geometry, zoom: 11 }, { duration: 2000 })
-      .then(() => {
-        view.popup.open({
-          features: [feature],
-          location: feature.geometry
+    // Force the UI to collapse first
+    collapse();
+    
+    // Tiny delay to ensure the CSS transition starts before the map heavy lifting
+    setTimeout(() => {
+      document.getElementById("results").style.display = "none";
+      damSearch.value = feature.attributes.Name;
+      document.getElementById("clearSearch").style.display = "block";
+      activeIndex = -1;
+
+      view.popup.close();
+      view.goTo({ target: feature.geometry, zoom: 11 }, { duration: 2000 })
+        .then(() => {
+          view.popup.open({
+            features: [feature],
+            location: feature.geometry
+          });
         });
-      });
+    }, 50); 
   }
 
   function selectOwner(index) {
