@@ -148,14 +148,18 @@
   @media (max-width: 768px) {
     #controls {
       width: 94%;
-      left: 3%;
+      left: 50% !important; /* Move to center */
+      transform: translateX(-50%); /* Offset by half its width to center exactly */
       top: auto;
       bottom: 12px;
       border-radius: 14px;
+      margin: 0; /* Remove any default margins */
+      box-sizing: border-box;
     }
 
+    /* This handles the collapsed state while keeping it centered */
     #controls.collapsed {
-      transform: translateY(calc(100% - 42px));
+      transform: translate(-50%, calc(100% - 45px)) !important;
     }
   }
 </style>
