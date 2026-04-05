@@ -958,7 +958,7 @@ if (ownerMatches.length && !isDamMatch) {
   function selectDam(index) {
     const feature = currentMatches[index];
     if (!feature) return;
-	
+	collapse();
 	document.getElementById("results").style.display = "none";
     damSearch.value = feature.attributes.Name;
     document.getElementById("clearSearch").style.display = "block";
@@ -977,6 +977,7 @@ if (ownerMatches.length && !isDamMatch) {
   function selectOwner(index) {
   const group = groupedResults[index];
   if (!group) return;
+  collapse();
 
   results.style.display = "none";
   damSearch.value = group.owner;
@@ -1007,7 +1008,7 @@ if (ownerMatches.length && !isDamMatch) {
   function selectHealth(index) {
   const group = groupedResults[index];
   if (!group) return;
-
+  collapse();
   results.style.display = "none";
   damSearch.value = group.health;
   document.getElementById("clearSearch").style.display = "block";
