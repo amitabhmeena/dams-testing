@@ -320,8 +320,10 @@ require([
 
   });
 
-  view.popup.watch("visible", function(isVisible) {
-  if (isVisible) collapse();
+  view.when(function () {
+  view.popup.watch("visible", function (isVisible) {
+    if (isVisible) collapse();
+  });
 });
 
   // locate
