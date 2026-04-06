@@ -352,6 +352,15 @@ view.ui.add(locateWidget, "top-right");
   view.on("click", () => {
     controls.classList.add("collapsed");
   });
+
+  // Collapse when popup becomes visible (user tapped a dam feature)
+  view.when(() => {
+    view.popup.watch("visible", (isVisible) => {
+      if (isVisible) {
+        controls.classList.add("collapsed");
+      }
+    });
+  });
 }
 
   // Feature layer for dams
