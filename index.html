@@ -353,14 +353,23 @@ view.ui.add(locateWidget, "top-right");
     controls.classList.add("collapsed");
   });
 
-  // Collapse when popup becomes visible (user tapped a dam feature)
+  // Collapse when popup opens OR when user taps a new feature while popup is already open
   view.when(() => {
     view.popup.watch("visible", (isVisible) => {
-      if (isVisible) {
-        controls.classList.add("collapsed");
-      }
+      if (isVisible) controls.classList.add("collapsed");
+    });
+    view.popup.watch("location", () => {
+      if (view.popup.visible) controls.classList.add("collapsed");
     });
   });
+
+  // Collapse on direct touch of the popup container
+  document.addEventListener("touchstart", (e) => {
+    const popup = document.querySelector(".esri-popup__main-container");
+    if (popup && popup.contains(e.target)) {
+      controls.classList.add("collapsed");
+    }
+  }, { passive: true });
 }
 
   // Feature layer for dams
