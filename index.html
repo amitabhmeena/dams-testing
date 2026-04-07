@@ -631,17 +631,14 @@ view.ui.add(scaleBar, {
           spatialReference: { wkid: 4326 }
         });
 
-        // Sanitize: spread dam fields first, then enforce OBJECTID + Name
-        // Null/undefined values become "" to prevent FeatureLayer type-mismatch crashes
-        const attrs = {};
-        Object.keys(dam).forEach(k => {
-          const v = dam[k];
-          attrs[k] = (v === null || v === undefined) ? "" : v;
+        features.push({
+          geometry: point,
+          attributes: {
+            OBJECTID: index + 1,
+            Name: dam.Name || "Unknown",
+            ...dam  // keep all other fields for popup
+          }
         });
-        attrs.OBJECTID = index + 1;
-        attrs.Name = dam.Name || "Unknown";
-
-        features.push({ geometry: point, attributes: attrs });
       });
 
       // ── Renderer (simple marker, size based on storage) ───────────────
@@ -655,6 +652,7 @@ view.ui.add(scaleBar, {
         },
         visualVariables: [{
           type: "size",
+          field: "Gross_storage",
           field: "Gross_storage",
           stops: [
             { value: 0,   size: 3 },
@@ -730,23 +728,17 @@ view.ui.add(scaleBar, {
 normalDamLabeling = labelingInfo;
 
       // ── AUTO-GENERATE FIELDS FROM JSON ATTRIBUTES ─────────────
-// Collect all keys across ALL records so no field is missed
-const allKeys = new Map(); // key → "oid" | "double" | "string"
-features.forEach(f => {
-  Object.entries(f.attributes).forEach(([k, v]) => {
-    if (k === "OBJECTID") { allKeys.set(k, "oid"); return; }
-    if (!allKeys.has(k)) {
-      allKeys.set(k, typeof v === "number" ? "double" : "string");
-    } else if (allKeys.get(k) === "string" && typeof v === "number") {
-      allKeys.set(k, "double");
-    }
-  });
-});
-const fields = [...allKeys.entries()].map(([name, type]) => ({
-  name,
-  alias: name.replace(/_/g, " "),
-  type
+const sampleAttrs = features[0].attributes;
+
+const fields = Object.keys(sampleAttrs).map(key => ({
+  name: key,
+  alias: key.replace(/_/g, " "),
+  type: typeof sampleAttrs[key] === "number" ? "double" : "string"
 }));
+
+// Ensure OBJECTID is correct
+const oidField = fields.find(f => f.name === "OBJECTID");
+if (oidField) oidField.type = "oid";
 
 
       damFeatureLayer = new FeatureLayer({
@@ -763,9 +755,9 @@ const fields = [...allKeys.entries()].map(([name, type]) => ({
           content: [
             {
               type: "fields",
-              fieldInfos: fields
-                .filter(f => f.name !== "OBJECTID")
-                .map(f => ({ fieldName: f.name, label: f.alias }))
+              fieldInfos: Object.keys(features[0]?.attributes || {})
+                .filter(k => k !== "OBJECTID")
+                .map(field => ({ fieldName: field, label: field.replace(/_/g, " ") }))
             }
           ]
         }
@@ -783,13 +775,14 @@ const fields = [...allKeys.entries()].map(([name, type]) => ({
       const sdsoIndex  = new Map();  // sdso  → state
 
       features.forEach(f => {
-        const state = String(f.attributes.State || "").trim();
-        const sdso  = String(f.attributes.SDSO  || "").trim();
-        if (state && !stateIndex.has(state)) stateIndex.set(state, new Set());
-        if (state && sdso) {
+        const state = (f.attributes.State || "").trim();
+        const sdso  = (f.attributes.SDSO  || "").trim();
+        if (!state) return;
+        if (!stateIndex.has(state)) stateIndex.set(state, new Set());
+        if (sdso) {
           stateIndex.get(state).add(sdso);
+          sdsoIndex.set(sdso, state);
         }
-        if (sdso && !sdsoIndex.has(sdso)) sdsoIndex.set(sdso, state);
       });
 
       const stateFilter = document.getElementById("stateFilter");
@@ -802,6 +795,9 @@ const fields = [...allKeys.entries()].map(([name, type]) => ({
         opt.textContent = s;
         stateFilter.appendChild(opt);
       });
+
+      // Populate SDSO dropdown on initial load (all SDSOs)
+      populateSdso("");
 
       // Helper: rebuild SDSO dropdown for a given state (or all)
       function populateSdso(selectedState) {
