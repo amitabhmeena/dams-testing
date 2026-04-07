@@ -728,17 +728,23 @@ view.ui.add(scaleBar, {
 normalDamLabeling = labelingInfo;
 
       // ── AUTO-GENERATE FIELDS FROM JSON ATTRIBUTES ─────────────
-const sampleAttrs = features[0].attributes;
+      // Scan ALL features to collect every possible key (not just first record)
+const allKeys = new Map(); // key → detected type
+features.forEach(f => {
+  Object.entries(f.attributes).forEach(([key, val]) => {
+    if (!allKeys.has(key)) {
+      allKeys.set(key, typeof val === "number" ? "double" : "string");
+    } else if (allKeys.get(key) === "string" && typeof val === "number") {
+      allKeys.set(key, "double"); // upgrade if we see a number later
+    }
+  });
+});
 
-const fields = Object.keys(sampleAttrs).map(key => ({
+const fields = [...allKeys.entries()].map(([key, type]) => ({
   name: key,
   alias: key.replace(/_/g, " "),
-  type: typeof sampleAttrs[key] === "number" ? "double" : "string"
+  type: key === "OBJECTID" ? "oid" : type
 }));
-
-// Ensure OBJECTID is correct
-const oidField = fields.find(f => f.name === "OBJECTID");
-if (oidField) oidField.type = "oid";
 
 
       damFeatureLayer = new FeatureLayer({
@@ -755,9 +761,9 @@ if (oidField) oidField.type = "oid";
           content: [
             {
               type: "fields",
-              fieldInfos: Object.keys(features[0]?.attributes || {})
-                .filter(k => k !== "OBJECTID")
-                .map(field => ({ fieldName: field, label: field.replace(/_/g, " ") }))
+              fieldInfos: fields
+                .filter(f => f.name !== "OBJECTID")
+                .map(f => ({ fieldName: f.name, label: f.alias }))
             }
           ]
         }
@@ -771,17 +777,22 @@ if (oidField) oidField.type = "oid";
       };
 
       // ── Build State & SDSO indexes from loaded features ───────────────
-      const _stateMap = new Map();
-      const _sdsoMap  = new Map();
+      const _stateMap = new Map(); // state → Set of SDSOs
+      const _sdsoMap  = new Map(); // sdso  → state
 
       features.forEach(f => {
         const st = (f.attributes.State || "").trim();
         const sd = (f.attributes.SDSO  || "").trim();
-        if (!st) return;
-        if (!_stateMap.has(st)) _stateMap.set(st, new Set());
+
+        // Always register state (even if no SDSO)
+        if (st && !_stateMap.has(st)) _stateMap.set(st, new Set());
+
+        // Register SDSO under its state
         if (sd) {
-          _stateMap.get(st).add(sd);
-          _sdsoMap.set(sd, st);
+          if (st) {
+            _stateMap.get(st).add(sd);
+          }
+          if (!_sdsoMap.has(sd)) _sdsoMap.set(sd, st); // first-seen state wins
         }
       });
 
