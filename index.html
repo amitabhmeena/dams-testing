@@ -206,7 +206,7 @@
     <div class="section">Basemap</div>
     <select id="basemapSelect">
       <option value="satellite" selected>Satellite</option>
-	  <option value="hybrid">Hybrid</option>
+    <option value="hybrid">Hybrid</option>
       <option value="topo">Topographic</option>
       <option value="streets">Street</option>
       <option value="none">No basemap</option>
@@ -349,7 +349,7 @@ const locateWidget = new Locate({
 });
 
 view.ui.add(locateWidget, "top-right");
-	
+  
 
   if (isMobile || isIOS) {
   controls.classList.add("collapsed");
@@ -409,7 +409,7 @@ view.ui.add(locateWidget, "top-right");
       $feature.BA_NAME == 'Area of Inland drainage in Rajasthan Basin',
       'Area of Inland drainage\\nin Rajasthan Basin',
 
-	  $feature.BA_NAME
+    $feature.BA_NAME
     )
   `
 },
@@ -492,8 +492,8 @@ geojson.features.forEach((f, i) => {
         }
       },
       labelingInfo: riverBasinsLabeling,
-	    labelsVisible: true,
-	    visible: false,
+      labelsVisible: true,
+      visible: false,
       title: "River Basins"
     });
 
@@ -598,7 +598,7 @@ view.ui.add(scaleBar, {
     map.basemap =
       basemapSelect.value === "none" ? null :
       basemapSelect.value === "satellite" ? "satellite" :
-	  basemapSelect.value === "hybrid" ? "hybrid" :
+    basemapSelect.value === "hybrid" ? "hybrid" :
       basemapSelect.value === "streets" ? "streets-vector" :
       "topo-vector";
   };
@@ -613,6 +613,72 @@ view.ui.add(scaleBar, {
   };
 
   
+
+  // ── State / SDSO filter logic (outer scope) ─────────────────────────
+  var stateFilterEl = document.getElementById("stateFilter");
+  var sdsoFilterEl  = document.getElementById("sdsoFilter");
+  var _stateMap = {};   // { stateName: [sdso1, sdso2, ...] }
+  var _sdsoList = [];
+
+  function buildFilterIndexes(json) {
+    var sm = {};
+    var sdsoSet = {};
+    json.forEach(function(dam) {
+      var st = (dam.State || "").trim();
+      var sd = (dam.SDSO  || "").trim();
+      if (!st) return;
+      if (!sm[st]) sm[st] = {};
+      if (sd) { sm[st][sd] = true; sdsoSet[sd] = true; }
+    });
+    _stateMap = sm;
+    _sdsoList = Object.keys(sdsoSet).sort();
+
+    // Populate State dropdown
+    Object.keys(sm).sort().forEach(function(s) {
+      var opt = document.createElement("option");
+      opt.value = s; opt.textContent = s;
+      stateFilterEl.appendChild(opt);
+    });
+
+    stateFilterEl.onchange = function() {
+      populateSdso(stateFilterEl.value);
+      sdsoFilterEl.value = "";
+      applyFilters();
+    };
+    sdsoFilterEl.onchange = function() {
+      applyFilters();
+    };
+  }
+
+  function populateSdso(selectedState) {
+    sdsoFilterEl.innerHTML = '<option value="">— All SDSOs —</option>';
+    var list = selectedState
+      ? Object.keys(_stateMap[selectedState] || {}).sort()
+      : _sdsoList;
+    list.forEach(function(s) {
+      var opt = document.createElement("option");
+      opt.value = s; opt.textContent = s;
+      sdsoFilterEl.appendChild(opt);
+    });
+  }
+
+  function applyFilters() {
+    var where = buildFilterWhere();
+    damFeatureLayer.definitionExpression = where || null;
+    damFeatureLayer.labelingInfo = normalDamLabeling;
+    damSearch.value = "";
+    document.getElementById("results").style.display = "none";
+    document.getElementById("clearSearch").style.display = "none";
+    currentMatches = [];
+    groupedResults = [];
+    activeIndex = -1;
+    view.popup.close();
+    if (where) {
+      damFeatureLayer.queryExtent({ where: where }).then(function(result) {
+        if (result.extent) view.goTo(result.extent.expand(1.3), { duration: 1500 });
+      });
+    }
+  }
 
   // Load dams → create FeatureLayer once
   fetch("dams.json")
@@ -770,77 +836,8 @@ if (oidField) oidField.type = "oid";
         damFeatureLayer.visible = damChk.checked;
       };
 
-      // ── Build State & SDSO indexes from loaded features ───────────────
-      const _stateMap = new Map();
-      const _sdsoMap  = new Map();
-
-      features.forEach(f => {
-        const st = (f.attributes.State || "").trim();
-        const sd = (f.attributes.SDSO  || "").trim();
-        if (!st) return;
-        if (!_stateMap.has(st)) _stateMap.set(st, new Set());
-        if (sd) {
-          _stateMap.get(st).add(sd);
-          _sdsoMap.set(sd, st);
-        }
-      });
-
-      const stateFilterEl = document.getElementById("stateFilter");
-      const sdsoFilterEl  = document.getElementById("sdsoFilter");
-
-      [..._stateMap.keys()].sort().forEach(s => {
-        const opt = document.createElement("option");
-        opt.value = s; opt.textContent = s;
-        stateFilterEl.appendChild(opt);
-      });
-
-      function populateSdso(selectedState) {
-        sdsoFilterEl.innerHTML = '<option value="">\u2014 All SDSOs \u2014</option>';
-        const list = selectedState
-          ? [...(_stateMap.get(selectedState) || [])].sort()
-          : [..._sdsoMap.keys()].sort();
-        list.forEach(s => {
-          const opt = document.createElement("option");
-          opt.value = s; opt.textContent = s;
-          sdsoFilterEl.appendChild(opt);
-        });
-      }
-
-      buildFilterWhere = function() {
-        const st = stateFilterEl.value;
-        const sd = sdsoFilterEl.value;
-        if (sd) return "SDSO = '" + sd.replace(/'/g, "''") + "'";
-        if (st) return "State = '" + st.replace(/'/g, "''") + "'";
-        return null;
-      };
-
-      function applyFilters() {
-        const where = buildFilterWhere();
-        damFeatureLayer.definitionExpression = where || null;
-        damFeatureLayer.labelingInfo = normalDamLabeling;
-        damSearch.value = "";
-        document.getElementById("results").style.display = "none";
-        document.getElementById("clearSearch").style.display = "none";
-        currentMatches = [];
-        groupedResults = [];
-        activeIndex = -1;
-        view.popup.close();
-        if (where) {
-          damFeatureLayer.queryExtent({ where }).then(function(result) {
-            if (result.extent) view.goTo(result.extent.expand(1.3), { duration: 1500 });
-          });
-        }
-      }
-
-      stateFilterEl.onchange = function() {
-        populateSdso(stateFilterEl.value);
-        sdsoFilterEl.value = "";
-        applyFilters();
-      };
-
-      sdsoFilterEl.onchange = function() {
-        applyFilters();
-      };
+      // ── Build State & SDSO indexes from raw JSON ───────────────
+      buildFilterIndexes(json);
 
     })
     .catch(err => console.error("Failed to load dams.json:", err));
@@ -851,9 +848,15 @@ if (oidField) oidField.type = "oid";
   let groupedResults = [];
   let searchMode = "dam"; // "dam" | "owner" | "health"
   // Hoisted so search query can access active filter (set after dams.json loads)
-  let buildFilterWhere = () => null;
+  function buildFilterWhere() {
+    var st = stateFilterEl ? stateFilterEl.value : "";
+    var sd = sdsoFilterEl  ? sdsoFilterEl.value  : "";
+    if (sd) return "SDSO = '" + sd.replace(/'/g, "''") + "'";
+    if (st) return "State = '" + st.replace(/'/g, "''") + "'";
+    return null;
+  }
 
-	// 🔴 Forced labeling for selected dams (ignore zoom)
+  // 🔴 Forced labeling for selected dams (ignore zoom)
 function getForcedLabeling(objectIds) {
   return [
     {
@@ -892,7 +895,7 @@ function getForcedLabeling(objectIds) {
 
     // Query the FeatureLayer instead of graphics
     // Scope search within active State/SDSO filter if set
-    const filterWhere = buildFilterWhere ? buildFilterWhere() : null;
+    var filterWhere = buildFilterWhere();
     const searchWhere = `
       LOWER(Name) LIKE '%${q.replace(/'/g, "''")}%'
       OR LOWER(Owner) LIKE '%${q.replace(/'/g, "''")}%'
@@ -1068,7 +1071,7 @@ if (ownerMatches.length && !isDamMatch) {
   function selectDam(index) {
     const feature = currentMatches[index];
     if (!feature) return;
-	document.getElementById("results").style.display = "none";
+  document.getElementById("results").style.display = "none";
     damSearch.value = feature.attributes.Name;
     document.getElementById("clearSearch").style.display = "block";
     activeIndex = -1;
@@ -1139,7 +1142,7 @@ if (ownerMatches.length && !isDamMatch) {
   });
 }
 
-	 
+   
   document.getElementById("clearSearch").onclick = () => {
   damSearch.value = "";
   document.getElementById("results").style.display = "none";
@@ -1149,7 +1152,7 @@ if (ownerMatches.length && !isDamMatch) {
   document.getElementById("clearSearch").style.display = "none";
   view.popup.close();
   
-	  // 🔄 Restore full dataset + zoom-based labeling
+    // 🔄 Restore full dataset + zoom-based labeling
 damFeatureLayer.definitionExpression = null;
 damFeatureLayer.labelingInfo = normalDamLabeling;
 damFeatureLayer.refresh();
