@@ -193,6 +193,16 @@
   <!-- TOGGLES -->
   <div id="toggle-container">
 
+    <div class="section">Filter by State</div>
+    <select id="stateFilter">
+      <option value="">— All States —</option>
+    </select>
+
+    <div class="section">Filter by SDSO</div>
+    <select id="sdsoFilter">
+      <option value="">— All SDSOs —</option>
+    </select>
+
     <div class="section">Basemap</div>
     <select id="basemapSelect">
       <option value="satellite" selected>Satellite</option>
@@ -759,6 +769,85 @@ if (oidField) oidField.type = "oid";
       damChk.onchange = () => {
         damFeatureLayer.visible = damChk.checked;
       };
+
+      // ── Build State & SDSO indexes from loaded features ───────────────
+      const stateIndex = new Map();  // state → Set of SDSOs
+      const sdsoIndex  = new Map();  // sdso  → state
+
+      features.forEach(f => {
+        const state = (f.attributes.State || "").trim();
+        const sdso  = (f.attributes.SDSO  || "").trim();
+        if (!state) return;
+        if (!stateIndex.has(state)) stateIndex.set(state, new Set());
+        if (sdso) {
+          stateIndex.get(state).add(sdso);
+          sdsoIndex.set(sdso, state);
+        }
+      });
+
+      const stateFilter = document.getElementById("stateFilter");
+      const sdsoFilter  = document.getElementById("sdsoFilter");
+
+      // Populate State dropdown (sorted)
+      [...stateIndex.keys()].sort().forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s;
+        opt.textContent = s;
+        stateFilter.appendChild(opt);
+      });
+
+      // Helper: rebuild SDSO dropdown for a given state (or all)
+      function populateSdso(selectedState) {
+        sdsoFilter.innerHTML = '<option value="">— All SDSOs —</option>';
+        const sdsos = selectedState
+          ? [...(stateIndex.get(selectedState) || [])].sort()
+          : [...sdsoIndex.keys()].sort();
+        sdsos.forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s;
+          opt.textContent = s;
+          sdsoFilter.appendChild(opt);
+        });
+      }
+
+      // Helper: build WHERE clause from current filter selections (assigned to outer scope)
+      buildFilterWhere = function() {
+        const st = stateFilter.value;
+        const sd = sdsoFilter.value;
+        if (sd)  return `SDSO = '${sd.replace(/'/g, "''")}'`;
+        if (st)  return `State = '${st.replace(/'/g, "''")}'`;
+        return null;
+      }
+
+      // Helper: apply filter to layer + reset search scope
+      function applyFilters() {
+        const where = buildFilterWhere();
+        damFeatureLayer.definitionExpression = where || null;
+        damFeatureLayer.labelingInfo = normalDamLabeling;
+        damSearch.value = "";
+        document.getElementById("results").style.display = "none";
+        document.getElementById("clearSearch").style.display = "none";
+        currentMatches = [];
+        groupedResults = [];
+        activeIndex = -1;
+        view.popup.close();
+        if (where) {
+          damFeatureLayer.queryExtent({ where }).then(result => {
+            if (result.extent) view.goTo(result.extent.expand(1.3), { duration: 1500 });
+          });
+        }
+      }
+
+      stateFilter.onchange = () => {
+        populateSdso(stateFilter.value);
+        sdsoFilter.value = "";
+        applyFilters();
+      };
+
+      sdsoFilter.onchange = () => {
+        applyFilters();
+      };
+
     })
     .catch(err => console.error("Failed to load dams.json", err));
 
@@ -767,6 +856,8 @@ if (oidField) oidField.type = "oid";
   let activeIndex = -1;
   let groupedResults = [];
   let searchMode = "dam"; // "dam" | "owner" | "health"
+  // Hoisted so search query can access active filter (set after dams.json loads)
+  let buildFilterWhere = () => null;
 
 	// 🔴 Forced labeling for selected dams (ignore zoom)
 function getForcedLabeling(objectIds) {
@@ -806,12 +897,15 @@ function getForcedLabeling(objectIds) {
     if (!q || !damFeatureLayer) return;
 
     // Query the FeatureLayer instead of graphics
-    damFeatureLayer.queryFeatures({
-      where: `
+    // Scope search within active State/SDSO filter if set
+    const filterWhere = buildFilterWhere ? buildFilterWhere() : null;
+    const searchWhere = `
       LOWER(Name) LIKE '%${q.replace(/'/g, "''")}%'
       OR LOWER(Owner) LIKE '%${q.replace(/'/g, "''")}%'
-	  OR LOWER(Health_Cat) LIKE '%${q.replace(/'/g, "''")}%'
-      `,
+      OR LOWER(Health_Cat) LIKE '%${q.replace(/'/g, "''")}%'
+    `;
+    damFeatureLayer.queryFeatures({
+      where: filterWhere ? `(${filterWhere}) AND (${searchWhere})` : searchWhere,
 
       outFields: ["*"],
       returnGeometry: true,
