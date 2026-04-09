@@ -206,7 +206,7 @@
     <div class="section">Basemap</div>
     <select id="basemapSelect">
       <option value="satellite" selected>Satellite</option>
-    <option value="hybrid">Hybrid</option>
+	  <option value="hybrid">Hybrid</option>
       <option value="topo">Topographic</option>
       <option value="streets">Street</option>
       <option value="none">No basemap</option>
@@ -349,7 +349,7 @@ const locateWidget = new Locate({
 });
 
 view.ui.add(locateWidget, "top-right");
-  
+	
 
   if (isMobile || isIOS) {
   controls.classList.add("collapsed");
@@ -409,7 +409,7 @@ view.ui.add(locateWidget, "top-right");
       $feature.BA_NAME == 'Area of Inland drainage in Rajasthan Basin',
       'Area of Inland drainage\\nin Rajasthan Basin',
 
-    $feature.BA_NAME
+	  $feature.BA_NAME
     )
   `
 },
@@ -492,8 +492,8 @@ geojson.features.forEach((f, i) => {
         }
       },
       labelingInfo: riverBasinsLabeling,
-      labelsVisible: true,
-      visible: false,
+	    labelsVisible: true,
+	    visible: false,
       title: "River Basins"
     });
 
@@ -598,7 +598,7 @@ view.ui.add(scaleBar, {
     map.basemap =
       basemapSelect.value === "none" ? null :
       basemapSelect.value === "satellite" ? "satellite" :
-    basemapSelect.value === "hybrid" ? "hybrid" :
+	  basemapSelect.value === "hybrid" ? "hybrid" :
       basemapSelect.value === "streets" ? "streets-vector" :
       "topo-vector";
   };
@@ -846,7 +846,7 @@ if (oidField) oidField.type = "oid";
   let currentMatches = [];
   let activeIndex = -1;
   let groupedResults = [];
-  let searchMode = "dam"; // "dam" | "owner" | "health"
+  let searchMode = "dam"; // "dam" | "owner" | "health" | "oper"
   // Hoisted so search query can access active filter (set after dams.json loads)
   function buildFilterWhere() {
     var st = stateFilterEl ? stateFilterEl.value : "";
@@ -856,7 +856,7 @@ if (oidField) oidField.type = "oid";
     return null;
   }
 
-  // 🔴 Forced labeling for selected dams (ignore zoom)
+	// 🔴 Forced labeling for selected dams (ignore zoom)
 function getForcedLabeling(objectIds) {
   return [
     {
@@ -900,6 +900,7 @@ function getForcedLabeling(objectIds) {
       LOWER(Name) LIKE '%${q.replace(/'/g, "''")}%'
       OR LOWER(Owner) LIKE '%${q.replace(/'/g, "''")}%'
       OR LOWER(Health_Cat) LIKE '%${q.replace(/'/g, "''")}%'
+      OR LOWER(Oper_Status) LIKE '%${q.replace(/'/g, "''")}%'
     `;
     damFeatureLayer.queryFeatures({
       where: filterWhere ? `(${filterWhere}) AND (${searchWhere})` : searchWhere,
@@ -924,6 +925,10 @@ const ownerMatches = currentMatches.filter(f =>
 );
 const healthMatches = currentMatches.filter(f =>
   (f.attributes.Health_Cat || "").toLowerCase().includes(q)
+);
+
+const operMatches = currentMatches.filter(f =>
+  (f.attributes.Oper_Status || "").toLowerCase().includes(q)
 );
 
 const isDamMatch = currentMatches.some(f =>
@@ -984,7 +989,31 @@ if (ownerMatches.length && !isDamMatch) {
     results.appendChild(div);
   });
   
-}  else {
+} else if (operMatches.length && !isDamMatch) {
+  searchMode = "oper";
+  groupedResults = [];
+
+  const groupMap = {};
+
+  operMatches.forEach(f => {
+    const key = f.attributes.Oper_Status || "Unknown";
+    if (!groupMap[key]) groupMap[key] = [];
+    groupMap[key].push(f);
+  });
+
+  Object.keys(groupMap).forEach((oper, idx) => {
+    const dams = groupMap[oper];
+
+    groupedResults.push({ oper, dams });
+
+    const div = document.createElement("div");
+    div.className = "result-item";
+    div.textContent = `${oper} (${dams.length} dams)`;
+    div.onclick = () => selectOperStatus(idx);
+    results.appendChild(div);
+  });
+
+} else {
   // Normal dam-name search
   searchMode = "dam";
   groupedResults = [];
@@ -1071,7 +1100,7 @@ if (ownerMatches.length && !isDamMatch) {
   function selectDam(index) {
     const feature = currentMatches[index];
     if (!feature) return;
-  document.getElementById("results").style.display = "none";
+	document.getElementById("results").style.display = "none";
     damSearch.value = feature.attributes.Name;
     document.getElementById("clearSearch").style.display = "block";
     activeIndex = -1;
@@ -1142,7 +1171,33 @@ if (ownerMatches.length && !isDamMatch) {
   });
 }
 
-   
+  function selectOperStatus(index) {
+  const group = groupedResults[index];
+  if (!group) return;
+  results.style.display = "none";
+  damSearch.value = group.oper;
+  document.getElementById("clearSearch").style.display = "block";
+  activeIndex = -1;
+
+  const objectIds = group.dams.map(f => f.attributes.OBJECTID);
+  const geometries = group.dams.map(f => f.geometry);
+
+  view.popup.close();
+
+  damFeatureLayer.definitionExpression =
+    `OBJECTID IN (${objectIds.join(",")})`;
+
+  damFeatureLayer.labelingInfo = getForcedLabeling(objectIds);
+
+  view.goTo(geometries, { duration: 2000 }).then(() => {
+    view.popup.open({
+      features: group.dams,
+      location: geometries[0]
+    });
+  });
+}
+
+	 
   document.getElementById("clearSearch").onclick = () => {
   damSearch.value = "";
   document.getElementById("results").style.display = "none";
@@ -1152,7 +1207,7 @@ if (ownerMatches.length && !isDamMatch) {
   document.getElementById("clearSearch").style.display = "none";
   view.popup.close();
   
-    // 🔄 Restore full dataset + zoom-based labeling
+	  // 🔄 Restore full dataset + zoom-based labeling
 damFeatureLayer.definitionExpression = null;
 damFeatureLayer.labelingInfo = normalDamLabeling;
 damFeatureLayer.refresh();
