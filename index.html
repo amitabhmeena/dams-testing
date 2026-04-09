@@ -673,11 +673,7 @@ view.ui.add(scaleBar, {
   }
 
   function applyFilters() {
-    var where = buildFilterWhere();
-    damFeatureLayer.definitionExpression = where || null;
-    damFeatureLayer.labelingInfo = normalDamLabeling;
-    view.popup.close();
-    // Only clear search if no aggregated filter is active
+    // Keep search text if agg filter is active
     if (!activeAggFilter) {
       damSearch.value = "";
       document.getElementById("results").style.display = "none";
@@ -685,15 +681,20 @@ view.ui.add(scaleBar, {
       currentMatches = [];
       groupedResults = [];
       activeIndex = -1;
+      // Default labeling + zoom for dropdown-only filters
+      var where = buildFilterWhere();
+      damFeatureLayer.definitionExpression = where || null;
+      damFeatureLayer.labelingInfo = normalDamLabeling;
+      view.popup.close();
+      if (where) {
+        damFeatureLayer.queryExtent({ where: where }).then(function(result) {
+          if (result.extent) view.goTo(result.extent.expand(1.3), { duration: 1500 });
+        });
+      }
     } else {
-      // Keep search text showing the active agg filter label
+      // Agg filter active → re-query with combined WHERE, forced labeling, popup
       document.getElementById("results").style.display = "none";
-    }
-    if (where || !activeAggFilter) {
-      var zoomWhere = where || "1=1";
-      damFeatureLayer.queryExtent({ where: zoomWhere }).then(function(result) {
-        if (result.extent) view.goTo(result.extent.expand(1.3), { duration: 1500 });
-      });
+      reapplyAggLabeling();
     }
   }
 
@@ -706,10 +707,45 @@ view.ui.add(scaleBar, {
     activeIndex = -1;
     var where = buildFilterWhere();
     damFeatureLayer.definitionExpression = where || null;
-    damFeatureLayer.labelingInfo = normalDamLabeling;
     view.popup.close();
-    damFeatureLayer.queryExtent({ where: where || "1=1" }).then(function(result) {
-      if (result.extent) view.goTo(result.extent.expand(1.3), { duration: 1500 });
+    // Query matching features → forced labeling + popup (same as before)
+    damFeatureLayer.queryFeatures({
+      where: where || "1=1",
+      outFields: ["*"],
+      returnGeometry: true
+    }).then(function(response) {
+      var features = response.features;
+      if (!features.length) return;
+      var objectIds = features.map(function(f) { return f.attributes.OBJECTID; });
+      var geometries = features.map(function(f) { return f.geometry; });
+      damFeatureLayer.labelingInfo = getForcedLabeling(objectIds);
+      view.goTo(geometries, { duration: 2000 }).then(function() {
+        view.popup.open({ features: features, location: geometries[0] });
+      });
+    });
+  }
+
+  // Re-apply forced labeling + popup when dropdown changes while agg filter is active
+  function reapplyAggLabeling() {
+    var where = buildFilterWhere();
+    damFeatureLayer.definitionExpression = where || null;
+    view.popup.close();
+    damFeatureLayer.queryFeatures({
+      where: where || "1=1",
+      outFields: ["*"],
+      returnGeometry: true
+    }).then(function(response) {
+      var features = response.features;
+      if (!features.length) {
+        damFeatureLayer.labelingInfo = normalDamLabeling;
+        return;
+      }
+      var objectIds = features.map(function(f) { return f.attributes.OBJECTID; });
+      var geometries = features.map(function(f) { return f.geometry; });
+      damFeatureLayer.labelingInfo = getForcedLabeling(objectIds);
+      view.goTo(geometries, { duration: 1500 }).then(function() {
+        view.popup.open({ features: features, location: geometries[0] });
+      });
     });
   }
 
