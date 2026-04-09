@@ -640,9 +640,19 @@ view.ui.add(scaleBar, {
       stateFilterEl.appendChild(opt);
     });
 
+    // Populate SDSO on load with all SDSOs
+    populateSdso("");
+
     stateFilterEl.onchange = function() {
+      // Repopulate SDSO list for selected state, preserve current SDSO if still valid
+      var curSdso = sdsoFilterEl.value;
       populateSdso(stateFilterEl.value);
-      sdsoFilterEl.value = "";
+      // Keep SDSO selection if it exists in the new list, else reset
+      if (curSdso && sdsoFilterEl.querySelector('option[value="' + curSdso + '"]')) {
+        sdsoFilterEl.value = curSdso;
+      } else {
+        sdsoFilterEl.value = "";
+      }
       applyFilters();
     };
     sdsoFilterEl.onchange = function() {
@@ -721,8 +731,8 @@ view.ui.add(scaleBar, {
           field: "Gross_storage",
           field: "Gross_storage",
           stops: [
-            { value: 0,   size: 4 },
-            { value: 2000, size: 7 }
+            { value: 0,   size: 3 },
+            { value: 500, size: 6 }
           ],
           legendOptions: { title: "Storage (MCM)" }
         }]
@@ -846,14 +856,15 @@ if (oidField) oidField.type = "oid";
   let currentMatches = [];
   let activeIndex = -1;
   let groupedResults = [];
-  let searchMode = "dam"; // "dam" | "owner" | "health" | "oper"
+  let searchMode = "dam"; // "dam" | "owner" | "health" | "oper" | "drip" | "damtype" | "gated"
   // Hoisted so search query can access active filter (set after dams.json loads)
   function buildFilterWhere() {
     var st = stateFilterEl ? stateFilterEl.value : "";
     var sd = sdsoFilterEl  ? sdsoFilterEl.value  : "";
-    if (sd) return "SDSO = '" + sd.replace(/'/g, "''") + "'";
-    if (st) return "State = '" + st.replace(/'/g, "''") + "'";
-    return null;
+    var parts = [];
+    if (st) parts.push("State = '" + st.replace(/'/g, "''") + "'");
+    if (sd) parts.push("SDSO = '"  + sd.replace(/'/g, "''") + "'");
+    return parts.length ? parts.join(" AND ") : null;
   }
 
 	// 🔴 Forced labeling for selected dams (ignore zoom)
@@ -901,6 +912,9 @@ function getForcedLabeling(objectIds) {
       OR LOWER(Owner) LIKE '%${q.replace(/'/g, "''")}%'
       OR LOWER(Health_Cat) LIKE '%${q.replace(/'/g, "''")}%'
       OR LOWER(Oper_Status) LIKE '%${q.replace(/'/g, "''")}%'
+      OR LOWER(DRIP) LIKE '%${q.replace(/'/g, "''")}%'
+      OR LOWER(Dam_type) LIKE '%${q.replace(/'/g, "''")}%'
+      OR LOWER(Gated_Ungated) LIKE '%${q.replace(/'/g, "''")}%'
     `;
     damFeatureLayer.queryFeatures({
       where: filterWhere ? `(${filterWhere}) AND (${searchWhere})` : searchWhere,
@@ -929,6 +943,15 @@ const healthMatches = currentMatches.filter(f =>
 
 const operMatches = currentMatches.filter(f =>
   (f.attributes.Oper_Status || "").toLowerCase().includes(q)
+);
+const dripMatches = currentMatches.filter(f =>
+  (f.attributes.DRIP || "").toLowerCase().includes(q)
+);
+const damTypeMatches = currentMatches.filter(f =>
+  (f.attributes.Dam_type || "").toLowerCase().includes(q)
+);
+const gatedMatches = currentMatches.filter(f =>
+  (f.attributes.Gated_Ungated || "").toLowerCase().includes(q)
 );
 
 const isDamMatch = currentMatches.some(f =>
@@ -1010,6 +1033,63 @@ if (ownerMatches.length && !isDamMatch) {
     div.className = "result-item";
     div.textContent = `${oper} (${dams.length} dams)`;
     div.onclick = () => selectOperStatus(idx);
+    results.appendChild(div);
+  });
+
+} else if (dripMatches.length && !isDamMatch) {
+  searchMode = "drip";
+  groupedResults = [];
+  const groupMap = {};
+  dripMatches.forEach(f => {
+    const key = f.attributes.DRIP || "Unknown";
+    if (!groupMap[key]) groupMap[key] = [];
+    groupMap[key].push(f);
+  });
+  Object.keys(groupMap).sort().forEach((drip, idx) => {
+    const dams = groupMap[drip];
+    groupedResults.push({ drip, dams });
+    const div = document.createElement("div");
+    div.className = "result-item";
+    div.textContent = `DRIP ${drip} (${dams.length} dams)`;
+    div.onclick = () => selectGrouped(idx, "drip");
+    results.appendChild(div);
+  });
+
+} else if (damTypeMatches.length && !isDamMatch) {
+  searchMode = "damtype";
+  groupedResults = [];
+  const groupMap = {};
+  damTypeMatches.forEach(f => {
+    const key = f.attributes.Dam_type || "Unknown";
+    if (!groupMap[key]) groupMap[key] = [];
+    groupMap[key].push(f);
+  });
+  Object.keys(groupMap).sort().forEach((dtype, idx) => {
+    const dams = groupMap[dtype];
+    groupedResults.push({ dtype, dams });
+    const div = document.createElement("div");
+    div.className = "result-item";
+    div.textContent = `${dtype} (${dams.length} dams)`;
+    div.onclick = () => selectGrouped(idx, "damtype");
+    results.appendChild(div);
+  });
+
+} else if (gatedMatches.length && !isDamMatch) {
+  searchMode = "gated";
+  groupedResults = [];
+  const groupMap = {};
+  gatedMatches.forEach(f => {
+    const key = f.attributes.Gated_Ungated || "Unknown";
+    if (!groupMap[key]) groupMap[key] = [];
+    groupMap[key].push(f);
+  });
+  Object.keys(groupMap).sort().forEach((gated, idx) => {
+    const dams = groupMap[gated];
+    groupedResults.push({ gated, dams });
+    const div = document.createElement("div");
+    div.className = "result-item";
+    div.textContent = `${gated} (${dams.length} dams)`;
+    div.onclick = () => selectGrouped(idx, "gated");
     results.appendChild(div);
   });
 
@@ -1196,6 +1276,29 @@ if (ownerMatches.length && !isDamMatch) {
     });
   });
 }
+
+
+  // Generic select for DRIP / Dam_type / Gated_Ungated groups
+  function selectGrouped(index, mode) {
+    const group = groupedResults[index];
+    if (!group) return;
+    results.style.display = "none";
+    const label = group.drip || group.dtype || group.gated || "";
+    damSearch.value = label;
+    document.getElementById("clearSearch").style.display = "block";
+    activeIndex = -1;
+
+    const objectIds = group.dams.map(f => f.attributes.OBJECTID);
+    const geometries = group.dams.map(f => f.geometry);
+
+    view.popup.close();
+    damFeatureLayer.definitionExpression = `OBJECTID IN (${objectIds.join(",")})`;
+    damFeatureLayer.labelingInfo = getForcedLabeling(objectIds);
+
+    view.goTo(geometries, { duration: 2000 }).then(() => {
+      view.popup.open({ features: group.dams, location: geometries[0] });
+    });
+  }
 
 	 
   document.getElementById("clearSearch").onclick = () => {
