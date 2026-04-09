@@ -676,18 +676,41 @@ view.ui.add(scaleBar, {
     var where = buildFilterWhere();
     damFeatureLayer.definitionExpression = where || null;
     damFeatureLayer.labelingInfo = normalDamLabeling;
-    damSearch.value = "";
-    document.getElementById("results").style.display = "none";
-    document.getElementById("clearSearch").style.display = "none";
-    currentMatches = [];
-    groupedResults = [];
-    activeIndex = -1;
     view.popup.close();
-    if (where) {
-      damFeatureLayer.queryExtent({ where: where }).then(function(result) {
+    // Only clear search if no aggregated filter is active
+    if (!activeAggFilter) {
+      damSearch.value = "";
+      document.getElementById("results").style.display = "none";
+      document.getElementById("clearSearch").style.display = "none";
+      currentMatches = [];
+      groupedResults = [];
+      activeIndex = -1;
+    } else {
+      // Keep search text showing the active agg filter label
+      document.getElementById("results").style.display = "none";
+    }
+    if (where || !activeAggFilter) {
+      var zoomWhere = where || "1=1";
+      damFeatureLayer.queryExtent({ where: zoomWhere }).then(function(result) {
         if (result.extent) view.goTo(result.extent.expand(1.3), { duration: 1500 });
       });
     }
+  }
+
+  // Apply an aggregated search filter (persists across dropdown changes)
+  function applyAggFilter(field, value, label) {
+    activeAggFilter = { field: field, value: value, label: label };
+    damSearch.value = label;
+    document.getElementById("clearSearch").style.display = "block";
+    document.getElementById("results").style.display = "none";
+    activeIndex = -1;
+    var where = buildFilterWhere();
+    damFeatureLayer.definitionExpression = where || null;
+    damFeatureLayer.labelingInfo = normalDamLabeling;
+    view.popup.close();
+    damFeatureLayer.queryExtent({ where: where || "1=1" }).then(function(result) {
+      if (result.extent) view.goTo(result.extent.expand(1.3), { duration: 1500 });
+    });
   }
 
   // Load dams → create FeatureLayer once
@@ -857,6 +880,7 @@ if (oidField) oidField.type = "oid";
   let activeIndex = -1;
   let groupedResults = [];
   let searchMode = "dam"; // "dam" | "owner" | "health" | "oper" | "drip" | "damtype" | "gated"
+  var activeAggFilter = null; // { field, value, label } — persists across dropdown changes
   // Hoisted so search query can access active filter (set after dams.json loads)
   function buildFilterWhere() {
     var st = stateFilterEl ? stateFilterEl.value : "";
@@ -864,6 +888,7 @@ if (oidField) oidField.type = "oid";
     var parts = [];
     if (st) parts.push("State = '" + st.replace(/'/g, "''") + "'");
     if (sd) parts.push("SDSO = '"  + sd.replace(/'/g, "''") + "'");
+    if (activeAggFilter) parts.push(activeAggFilter.field + " = '" + activeAggFilter.value.replace(/'/g, "''") + "'");
     return parts.length ? parts.join(" AND ") : null;
   }
 
@@ -1198,83 +1223,18 @@ if (ownerMatches.length && !isDamMatch) {
   function selectOwner(index) {
   const group = groupedResults[index];
   if (!group) return;
-
-  results.style.display = "none";
-  damSearch.value = group.owner;
-  document.getElementById("clearSearch").style.display = "block";
-  activeIndex = -1;
-
-  const objectIds = group.dams.map(f => f.attributes.OBJECTID);
-  const geometries = group.dams.map(f => f.geometry);
-
-  view.popup.close();
-
-  // 🔹 Only these dams remain active
-  damFeatureLayer.definitionExpression =
-    `OBJECTID IN (${objectIds.join(",")})`;
-
-  // 🔹 FORCE labels at all zoom levels
-  damFeatureLayer.labelingInfo = getForcedLabeling(objectIds);
-
-  view.goTo(geometries, { duration: 2000 }).then(() => {
-
-    view.popup.open({
-      features: group.dams,
-      location: geometries[0]
-    });
-
-  });
+  applyAggFilter("Owner", group.owner, group.owner);
 }
   function selectHealth(index) {
   const group = groupedResults[index];
   if (!group) return;
-  results.style.display = "none";
-  damSearch.value = group.health;
-  document.getElementById("clearSearch").style.display = "block";
-  activeIndex = -1;
-
-  const objectIds = group.dams.map(f => f.attributes.OBJECTID);
-  const geometries = group.dams.map(f => f.geometry);
-
-  view.popup.close();
-
-  damFeatureLayer.definitionExpression =
-    `OBJECTID IN (${objectIds.join(",")})`;
-
-  damFeatureLayer.labelingInfo = getForcedLabeling(objectIds);
-
-  view.goTo(geometries, { duration: 2000 }).then(() => {
-    view.popup.open({
-      features: group.dams,
-      location: geometries[0]
-    });
-  });
+  applyAggFilter("Health_Cat", group.health, group.health);
 }
 
   function selectOperStatus(index) {
   const group = groupedResults[index];
   if (!group) return;
-  results.style.display = "none";
-  damSearch.value = group.oper;
-  document.getElementById("clearSearch").style.display = "block";
-  activeIndex = -1;
-
-  const objectIds = group.dams.map(f => f.attributes.OBJECTID);
-  const geometries = group.dams.map(f => f.geometry);
-
-  view.popup.close();
-
-  damFeatureLayer.definitionExpression =
-    `OBJECTID IN (${objectIds.join(",")})`;
-
-  damFeatureLayer.labelingInfo = getForcedLabeling(objectIds);
-
-  view.goTo(geometries, { duration: 2000 }).then(() => {
-    view.popup.open({
-      features: group.dams,
-      location: geometries[0]
-    });
-  });
+  applyAggFilter("Oper_Status", group.oper, group.oper);
 }
 
 
@@ -1282,22 +1242,11 @@ if (ownerMatches.length && !isDamMatch) {
   function selectGrouped(index, mode) {
     const group = groupedResults[index];
     if (!group) return;
-    results.style.display = "none";
-    const label = group.drip || group.dtype || group.gated || "";
-    damSearch.value = label;
-    document.getElementById("clearSearch").style.display = "block";
-    activeIndex = -1;
-
-    const objectIds = group.dams.map(f => f.attributes.OBJECTID);
-    const geometries = group.dams.map(f => f.geometry);
-
-    view.popup.close();
-    damFeatureLayer.definitionExpression = `OBJECTID IN (${objectIds.join(",")})`;
-    damFeatureLayer.labelingInfo = getForcedLabeling(objectIds);
-
-    view.goTo(geometries, { duration: 2000 }).then(() => {
-      view.popup.open({ features: group.dams, location: geometries[0] });
-    });
+    const fieldMap = { drip: "DRIP", damtype: "Dam_type", gated: "Gated_Ungated" };
+    const keyMap   = { drip: group.drip, damtype: group.dtype, gated: group.gated };
+    const field = fieldMap[mode];
+    const value = keyMap[mode] || "";
+    applyAggFilter(field, value, value);
   }
 
 	 
@@ -1307,14 +1256,15 @@ if (ownerMatches.length && !isDamMatch) {
   currentMatches = [];
   groupedResults = [];
   activeIndex = -1;
+  activeAggFilter = null;
   document.getElementById("clearSearch").style.display = "none";
   view.popup.close();
-  
-	  // 🔄 Restore full dataset + zoom-based labeling
-damFeatureLayer.definitionExpression = null;
-damFeatureLayer.labelingInfo = normalDamLabeling;
-damFeatureLayer.refresh();
 
+  // 🔄 Reapply only dropdown filters (or full dataset if none set)
+  var where = buildFilterWhere();
+  damFeatureLayer.definitionExpression = where || null;
+  damFeatureLayer.labelingInfo = normalDamLabeling;
+  damFeatureLayer.refresh();
 };
 
 
