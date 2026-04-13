@@ -790,8 +790,8 @@ view.ui.add(scaleBar, {
           field: "Gross_storage",
           field: "Gross_storage",
           stops: [
-            { value: 0,   size: 4 },
-            { value: 2000, size: 7 }
+            { value: 0,   size: 3 },
+            { value: 500, size: 6 }
           ],
           legendOptions: { title: "Storage (MCM)" }
         }]
@@ -915,7 +915,7 @@ if (oidField) oidField.type = "oid";
   let currentMatches = [];
   let activeIndex = -1;
   let groupedResults = [];
-  let searchMode = "dam"; // "dam" | "owner" | "health" | "oper" | "drip" | "damtype" | "gated"
+  let searchMode = "dam"; // "dam" | "owner" | "health" | "oper" | "drip" | "damtype" | "gated" | "agecat" | "heightcat" | "statusrrssd"
   var activeAggFilter = null; // { field, value, label } — persists across dropdown changes
   // Hoisted so search query can access active filter (set after dams.json loads)
   function buildFilterWhere() {
@@ -976,6 +976,9 @@ function getForcedLabeling(objectIds) {
       OR LOWER(DRIP) LIKE '%${q.replace(/'/g, "''")}%'
       OR LOWER(Dam_type) LIKE '%${q.replace(/'/g, "''")}%'
       OR LOWER(Gated_Ungated) LIKE '%${q.replace(/'/g, "''")}%'
+      OR LOWER(Age_Cat) LIKE '%${q.replace(/'/g, "''")}%'
+      OR LOWER(Height_Cat) LIKE '%${q.replace(/'/g, "''")}%'
+      OR LOWER(Status_RRSSD) LIKE '%${q.replace(/'/g, "''")}%'
     `;
     damFeatureLayer.queryFeatures({
       where: filterWhere ? `(${filterWhere}) AND (${searchWhere})` : searchWhere,
@@ -1013,6 +1016,15 @@ const damTypeMatches = currentMatches.filter(f =>
 );
 const gatedMatches = currentMatches.filter(f =>
   (f.attributes.Gated_Ungated || "").toLowerCase().includes(q)
+);
+const ageCatMatches = currentMatches.filter(f =>
+  (f.attributes.Age_Cat || "").toLowerCase().includes(q)
+);
+const heightCatMatches = currentMatches.filter(f =>
+  (f.attributes.Height_Cat || "").toLowerCase().includes(q)
+);
+const statusRrssdMatches = currentMatches.filter(f =>
+  (f.attributes.Status_RRSSD || "").toLowerCase().includes(q)
 );
 
 const isDamMatch = currentMatches.some(f =>
@@ -1154,6 +1166,63 @@ if (ownerMatches.length && !isDamMatch) {
     results.appendChild(div);
   });
 
+} else if (ageCatMatches.length && !isDamMatch) {
+  searchMode = "agecat";
+  groupedResults = [];
+  const groupMap = {};
+  ageCatMatches.forEach(f => {
+    const key = f.attributes.Age_Cat || "Unknown";
+    if (!groupMap[key]) groupMap[key] = [];
+    groupMap[key].push(f);
+  });
+  Object.keys(groupMap).sort().forEach((agecat, idx) => {
+    const dams = groupMap[agecat];
+    groupedResults.push({ agecat, dams });
+    const div = document.createElement("div");
+    div.className = "result-item";
+    div.textContent = `${agecat} (${dams.length} dams)`;
+    div.onclick = () => selectGrouped(idx, "agecat");
+    results.appendChild(div);
+  });
+
+} else if (heightCatMatches.length && !isDamMatch) {
+  searchMode = "heightcat";
+  groupedResults = [];
+  const groupMap = {};
+  heightCatMatches.forEach(f => {
+    const key = f.attributes.Height_Cat || "Unknown";
+    if (!groupMap[key]) groupMap[key] = [];
+    groupMap[key].push(f);
+  });
+  Object.keys(groupMap).sort().forEach((heightcat, idx) => {
+    const dams = groupMap[heightcat];
+    groupedResults.push({ heightcat, dams });
+    const div = document.createElement("div");
+    div.className = "result-item";
+    div.textContent = `${heightcat} (${dams.length} dams)`;
+    div.onclick = () => selectGrouped(idx, "heightcat");
+    results.appendChild(div);
+  });
+
+} else if (statusRrssdMatches.length && !isDamMatch) {
+  searchMode = "statusrrssd";
+  groupedResults = [];
+  const groupMap = {};
+  statusRrssdMatches.forEach(f => {
+    const key = f.attributes.Status_RRSSD || "Unknown";
+    if (!groupMap[key]) groupMap[key] = [];
+    groupMap[key].push(f);
+  });
+  Object.keys(groupMap).sort().forEach((statusrrssd, idx) => {
+    const dams = groupMap[statusrrssd];
+    groupedResults.push({ statusrrssd, dams });
+    const div = document.createElement("div");
+    div.className = "result-item";
+    div.textContent = `${statusrrssd} (${dams.length} dams)`;
+    div.onclick = () => selectGrouped(idx, "statusrrssd");
+    results.appendChild(div);
+  });
+
 } else {
   // Normal dam-name search
   searchMode = "dam";
@@ -1278,8 +1347,8 @@ if (ownerMatches.length && !isDamMatch) {
   function selectGrouped(index, mode) {
     const group = groupedResults[index];
     if (!group) return;
-    const fieldMap = { drip: "DRIP", damtype: "Dam_type", gated: "Gated_Ungated" };
-    const keyMap   = { drip: group.drip, damtype: group.dtype, gated: group.gated };
+    const fieldMap = { drip: "DRIP", damtype: "Dam_type", gated: "Gated_Ungated", agecat: "Age_Cat", heightcat: "Height_Cat", statusrrssd: "Status_RRSSD" };
+    const keyMap   = { drip: group.drip, damtype: group.dtype, gated: group.gated, agecat: group.agecat, heightcat: group.heightcat, statusrrssd: group.statusrrssd };
     const field = fieldMap[mode];
     const value = keyMap[mode] || "";
     applyAggFilter(field, value, value);
