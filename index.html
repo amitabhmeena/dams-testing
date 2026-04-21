@@ -979,6 +979,7 @@ function getForcedLabeling(objectIds) {
       OR LOWER(Age_Cat) LIKE '%${q.replace(/'/g, "''")}%'
       OR LOWER(Height_Cat) LIKE '%${q.replace(/'/g, "''")}%'
       OR LOWER(Status_RRSSD) LIKE '%${q.replace(/'/g, "''")}%'
+      OR LOWER(Region) LIKE '%${q.replace(/'/g, "''")}%'
     `;
     damFeatureLayer.queryFeatures({
       where: filterWhere ? `(${filterWhere}) AND (${searchWhere})` : searchWhere,
@@ -1025,6 +1026,9 @@ const heightCatMatches = currentMatches.filter(f =>
 );
 const statusRrssdMatches = currentMatches.filter(f =>
   (f.attributes.Status_RRSSD || "").toLowerCase().includes(q)
+);
+const regionMatches = currentMatches.filter(f =>
+  (f.attributes.Region || "").toLowerCase().includes(q)
 );
 
 const isDamMatch = currentMatches.some(f =>
@@ -1223,6 +1227,25 @@ if (ownerMatches.length && !isDamMatch) {
     results.appendChild(div);
   });
 
+} else if (regionMatches.length && !isDamMatch) {
+  searchMode = "region";
+  groupedResults = [];
+  const groupMap = {};
+  regionMatches.forEach(f => {
+    const key = f.attributes.Region || "Unknown";
+    if (!groupMap[key]) groupMap[key] = [];
+    groupMap[key].push(f);
+  });
+  Object.keys(groupMap).sort().forEach((region, idx) => {
+    const dams = groupMap[region];
+    groupedResults.push({ region, dams });
+    const div = document.createElement("div");
+    div.className = "result-item";
+    div.textContent = `${region} (${dams.length} dams)`;
+    div.onclick = () => selectGrouped(idx, "region");
+    results.appendChild(div);
+  });
+
 } else {
   // Normal dam-name search
   searchMode = "dam";
@@ -1347,8 +1370,8 @@ if (ownerMatches.length && !isDamMatch) {
   function selectGrouped(index, mode) {
     const group = groupedResults[index];
     if (!group) return;
-    const fieldMap = { drip: "DRIP", damtype: "Dam_type", gated: "Gated_Ungated", agecat: "Age_Cat", heightcat: "Height_Cat", statusrrssd: "Status_RRSSD" };
-    const keyMap   = { drip: group.drip, damtype: group.dtype, gated: group.gated, agecat: group.agecat, heightcat: group.heightcat, statusrrssd: group.statusrrssd };
+    const fieldMap = { drip: "DRIP", damtype: "Dam_type", gated: "Gated_Ungated", agecat: "Age_Cat", heightcat: "Height_Cat", statusrrssd: "Status_RRSSD", region: "Region" };
+    const keyMap   = { drip: group.drip, damtype: group.dtype, gated: group.gated, agecat: group.agecat, heightcat: group.heightcat, statusrrssd: group.statusrrssd, region: group.region };
     const field = fieldMap[mode];
     const value = keyMap[mode] || "";
     applyAggFilter(field, value, value);
