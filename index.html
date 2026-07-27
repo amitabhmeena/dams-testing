@@ -606,7 +606,6 @@ view.ui.add(scaleBar, {
   stateChk.onchange = () => stateLayer.visible = stateChk.checked;
   districtChk.onchange = () => districtLayer.visible = districtChk.checked;
   riverChk.onchange = () => riverLayer.visible = riverChk.checked;
-  riverBasinsChk.onchange = () => riverBasinsLayer.visible = riverBasinsChk.checked;
 
   damChk.onchange = () => {
     if (damFeatureLayer) damFeatureLayer.visible = damChk.checked;
@@ -787,7 +786,6 @@ view.ui.add(scaleBar, {
         },
         visualVariables: [{
           type: "size",
-          field: "Gross_storage",
           field: "Gross_storage",
           stops: [
             { value: 0,   size: 4 },
@@ -1288,10 +1286,32 @@ if (ownerMatches.length && !isDamMatch) {
       return;
     }
 
-    // Case 2: No dam selected → geocode
+    // Case 2: No dam selected → check if input looks like lat/lon coordinates
     const query = damSearch.value.trim();
     if (!query) return;
 
+    const coordMatch = query.match(/^\s*(-?\d+(\.\d+)?)\s*[,\s]\s*(-?\d+(\.\d+)?)\s*$/);
+    if (coordMatch) {
+      const lat = parseFloat(coordMatch[1]);
+      const lon = parseFloat(coordMatch[3]);
+
+      if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+        view.popup.close();
+        view.goTo({
+          target: [lon, lat],
+          zoom: 12
+        }, { duration: 2000 }).then(() => {
+          view.popup.open({
+            title: `Coordinates: ${lat}, ${lon}`,
+            location: { type: "point", longitude: lon, latitude: lat },
+            content: "Navigated using entered coordinates"
+          });
+        });
+        return;
+      }
+    }
+
+    // Case 3: Not coordinates → geocode
     locator.addressToLocations(worldLocator, {
       address: { SingleLine: query },
       maxLocations: 1,
